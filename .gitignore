@@ -1,3 +1,19 @@
+# Real strata docs and their labels — never commit (copyright + privacy)
+fixtures/strata/
+
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+
+# Claude Code
 .claude/settings.local.json
 .claude/projects/
 .claude/scheduled_tasks.lock
