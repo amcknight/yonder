@@ -1,0 +1,9 @@
+{
+  "complete": true,
+  "unit_entitlement": { "numerator": 18, "denominator": 2719 },
+  "reserve_fund": { "trend": "declining" },
+  "special_levies": [
+    { "amount": 4200.0, "purpose": "roof" },
+    { "amount": 850.0, "purpose": "elevator" }
+  ]
+}
