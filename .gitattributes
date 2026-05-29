@@ -1,0 +1,4 @@
+# Never apply end-of-line conversion to binary fixtures (would corrupt them).
+*.pdf binary
+*.png binary
+*.jpg binary
