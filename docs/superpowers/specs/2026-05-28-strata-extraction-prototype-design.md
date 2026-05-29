@@ -69,8 +69,10 @@ yonder/
 - **PDF handling** — send the PDF straight to Claude as a document content block
   (born-digital PDFs read natively, no OCR). A light local text-extraction fallback
   is *not* built until a real doc demonstrates it's needed (YAGNI).
-- **Structured output** — Claude is forced to fill the schema via tool-use, so output
-  is always schema-valid or the call retries.
+- **Structured output** — Claude fills the schema via tool-use. Tool-use constrains
+  shape but does not guarantee Pydantic validity (bad date strings, enum drift), so
+  `strata.py` owns a **validate → repair-retry-once → fail loudly** loop. The SDK does
+  not auto-repair; we do.
 
 ## Extraction schema (`schema.py`)
 
@@ -89,8 +91,29 @@ StrataExtract
 ├─ special_levies[]  amount, date_approved, purpose
 ├─ litigation        present (bool), summary (nullable)
 ├─ reserve_fund      balance (nullable), as_of_date (nullable), trend (rising|flat|declining|unknown)
-└─ provenance        EVERY extracted fact carries: source (doc + page) and confidence
+└─ provenance        attached at FACT granularity (see below): source (page, + doc id) and confidence
 ```
+
+**Input granularity: one PDF in → one `StrataExtract` out.** A single command run
+extracts from a single PDF file. Because BC strata packages are frequently *one
+combined PDF* containing many sub-documents (several years of AGM minutes + a
+depreciation report + Form B), `documents[]` models the sub-documents found *within
+that one PDF*, and `source` is primarily a **page reference** (with an optional doc
+id for the sub-document). Aggregating multiple separate PDFs into one building-level
+view is explicitly **out of scope for Prototype 1** — deferred until single-PDF
+extraction is proven.
+
+**Provenance/confidence granularity: per fact, not per scalar.** Provenance +
+confidence attach to each *fact* — every list item (a levy, a meeting, a document)
+and each top-level group (building, unit_entitlement, reserve_fund) — **not** to
+every individual scalar field. Wrapping every scalar in `{value, source, confidence}`
+would bloat the tool-use schema and degrade extraction; fact-level is the right
+altitude for both the eval and the future trust UI.
+
+**Large documents.** A 100+ page depreciation report may exceed context or get
+expensive as a single document block. Prototype 1 sends the whole PDF and we see
+what breaks; if a real doc exceeds limits, chunk-by-page-range is the fallback —
+built only when actually hit (YAGNI), logged clearly when it happens.
 
 Two deliberate choices beyond the bare glossary:
 
@@ -129,7 +152,8 @@ This is what makes Prototype 1 a *proof*, not a demo.
   strata docs carry copyright + privacy risk; reusing one buyer's docs is a hazard.)
 - `fixtures/samples/` — **one synthetic strata doc** (fictional building, plausible
   AGM minutes + financials), committed, with a hand-written `expected.json` beside
-  it. This is what CI and fresh clones run against.
+  it, marked `"complete": true`. This is what CI and fresh clones run against, and the
+  only fixture where hallucinations are counted.
 - Real-doc labels (`*.expected.json` under `fixtures/strata/`) describe real
   buildings, so they are also gitignored.
 
@@ -145,7 +169,7 @@ are misleading — one miss swings everything, and a percentage pretends to be a
 rate it isn't. Instead:
 
 - `score.py` emits a structured per-field result, each typed as one of:
-  **match | wrong-value | missed | hallucinated** (plus a low-confidence-but-correct
+  **match | wrong-value | missed | unlabeled-extra** (plus a low-confidence-but-correct
   flag).
 - The CLI renders an itemized diff table with **raw counts and the denominator
   always visible** (e.g. "special_levies: 2 expected · 2 found · 0 extra").
@@ -155,17 +179,30 @@ rate it isn't. Instead:
 - Comparison is field-typed: dates normalized, money tolerant of formatting,
   ratios exact.
 
+**Hallucination counting requires a complete label — don't fake it.** `score.py`
+cannot distinguish a hallucination from a real fact the labeler simply didn't bother
+to assert. So an extracted fact absent from a *partial* label is **`unlabeled-extra`
+(unknown)**, never silently counted as a hallucination. True hallucination counts are
+only meaningful against the **synthetic sample**, whose `expected.json` is *complete*
+and explicitly flagged `"complete": true` — there, extras genuinely are hallucinations.
+Reporting a "0 hallucinations" figure against a partial real-doc label would be exactly
+the false-precision we're avoiding.
+
 Example render:
 
 ```
-doc: gardens-at-yaletown-2024
+doc: sample-strata-package  (label: complete)
   cost_share_ratio   ✓ 18/2719
   AGM date           ✓ 2024-03-12
   special_levies     2 expected · 2 found · 0 extra
     ✓ $4,200  2023-11  roof
     ✗ MISSED  $850   2024-02  elevator
   reserve_fund.trend ✗ got "flat", expected "declining"
-  hallucinations     0
+  hallucinations     0          (counted: label is complete)
+
+doc: real-doc-partial-label  (label: partial)
+  ...matches/wrong/missed on asserted fields only...
+  unlabeled-extra    3          (NOT counted as hallucinations)
 ```
 
 ### User-facing confidence is a separate concern
@@ -180,8 +217,8 @@ Noted now to prevent that conflation later.
 
 - **Unit tests, deterministic, CI-safe (no API calls):**
   - `test_schema.py` — model validation, nullability, ratio parsing.
-  - `test_score.py` — the comparison logic (match/wrong/missed/hallucinated typing,
-    date/money normalization, denominators).
+  - `test_score.py` — the comparison logic (match/wrong/missed/unlabeled-extra typing,
+    complete-vs-partial label handling, date/money normalization, denominators).
 - **Integration test against the committed synthetic sample** (`test_extract.py`):
   asserts *structure* — correct doc types found, dates parse, no crash — not exact
   LLM wording, so it stays stable. May be marked to skip without an API key.
