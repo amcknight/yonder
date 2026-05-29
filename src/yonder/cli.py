@@ -9,7 +9,6 @@ from pathlib import Path
 
 from yonder.eval.score import FieldResult, ResultType, score_extract, tally
 from yonder.extract.client import ClaudeClient
-from yonder.extract.schema import StrataExtract
 from yonder.extract.strata import extract_strata
 
 _SYMBOL = {
