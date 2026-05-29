@@ -50,27 +50,54 @@ def cmd_extract(args: argparse.Namespace) -> int:
     return 0
 
 
+def _resolve_label(pdf: Path) -> Path | None:
+    """Find a PDF's label: a sibling `<stem>.expected.json`, else an
+    `expected.json` in the same folder. Returns None if neither exists."""
+    sibling = pdf.with_suffix(".expected.json")
+    if sibling.exists():
+        return sibling
+    folder_label = pdf.parent / "expected.json"
+    if folder_label.exists():
+        return folder_label
+    return None
+
+
+def find_labeled_pdfs(folder: Path) -> tuple[list[tuple[Path, Path]], list[Path]]:
+    """Recursively discover PDFs under `folder` (real strata packages nest docs
+    in subfolders). Returns (labeled (pdf, label) pairs, unlabeled pdfs)."""
+    labeled: list[tuple[Path, Path]] = []
+    unlabeled: list[Path] = []
+    for pdf in sorted(folder.rglob("*.pdf")):
+        label = _resolve_label(pdf)
+        if label is not None:
+            labeled.append((pdf, label))
+        else:
+            unlabeled.append(pdf)
+    return labeled, unlabeled
+
+
 def cmd_eval(args: argparse.Namespace) -> int:
     folder = Path(args.folder)
-    pdfs = sorted(folder.glob("*.pdf"))
-    if not pdfs:
-        print(f"No PDFs in {folder}", file=sys.stderr)
+    labeled, unlabeled = find_labeled_pdfs(folder)
+    if not labeled and not unlabeled:
+        print(f"No PDFs under {folder}", file=sys.stderr)
+        return 1
+    if not labeled:
+        print(
+            f"No labeled PDFs under {folder} ({len(unlabeled)} found, but none have a "
+            "*.expected.json label). Write a label next to a PDF to score it.",
+            file=sys.stderr,
+        )
         return 1
     client = _build_client()
-    for pdf in pdfs:
-        label_path = pdf.with_suffix(".expected.json")
-        if not label_path.exists():
-            # Convention: the sample uses expected.json (single sample per folder).
-            alt = pdf.parent / "expected.json"
-            label_path = alt if alt.exists() else label_path
-        if not label_path.exists():
-            print(f"skip {pdf.name}: no label", file=sys.stderr)
-            continue
+    for pdf, label_path in labeled:
         label = json.loads(label_path.read_text())
         extract = extract_strata(pdf.read_bytes(), client=client)
         results = score_extract(extract, label)
         print(render_report(pdf.stem, results, complete=bool(label.get("complete", False))))
         print()
+    if unlabeled:
+        print(f"(skipped {len(unlabeled)} unlabeled PDF(s))", file=sys.stderr)
     return 0
 
 
