@@ -1287,12 +1287,13 @@ git commit -m "test: add live integration test against synthetic sample (skips w
 
 - [ ] **Step 1: Move the brainstorm docs**
 
-Run (PowerShell):
-```powershell
-New-Item -ItemType Directory -Force -Path docs/brainstorm | Out-Null
-git mv "ARCHITECTURE Sketch.md" docs/brainstorm/architecture-sketch.md
-git mv bc-home-buying-feature-glossary.md docs/brainstorm/feature-glossary.md
-git mv bc-home-buying-data-playbook.md docs/brainstorm/data-playbook.md
+The three docs are currently **untracked** (never committed), so use plain `mv`,
+not `git mv`. They get added to git in this task's final commit. Run (bash):
+```bash
+mkdir -p docs/brainstorm
+mv "ARCHITECTURE Sketch.md" docs/brainstorm/architecture-sketch.md
+mv bc-home-buying-feature-glossary.md docs/brainstorm/feature-glossary.md
+mv bc-home-buying-data-playbook.md docs/brainstorm/data-playbook.md
 ```
 
 - [ ] **Step 2: Write `CLAUDE.md`**
