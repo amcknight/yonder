@@ -100,6 +100,21 @@ Two deliberate choices beyond the bare glossary:
   p.4"), and it lets low-confidence facts be flagged rather than asserted.
 - **Everything nullable.** Absence is modeled explicitly; the schema never invents.
 
+**Designed to grow — this is a v0 seed, not a frozen contract.** Health factors
+*will* multiply and doc types *will* proliferate as we see real docs, so the schema
+and prompt are built to absorb that cheaply:
+
+- **Doc type is an open vocabulary, not a closed enum.** A small typed core
+  (AGM/SGM minutes, depreciation report, financial statement, Form B, bylaws) plus
+  a freeform `other` with a model-supplied label — so an unrecognized doc type
+  *degrades gracefully* (still extracted, just labeled) instead of failing or being
+  force-fit into the wrong bucket.
+- **Health factors are additive.** The fields above are the starting set; adding a
+  new factor should be a localized schema + prompt change, not a refactor. Avoid
+  coupling the extractor to any one factor's shape.
+- The eval harness must tolerate this: scoring only checks fields a label asserts,
+  so new schema fields don't break existing labels/regression tests.
+
 Scope note: Prototype 1's schema covers **Strata Health Visualizer facts only**.
 Agent-email facts (viewing times, subject-removal dates, price changes) are a
 deferred second pass.
