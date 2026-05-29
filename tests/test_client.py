@@ -47,7 +47,7 @@ def test_extract_with_tool_sends_pdf_document_block():
     assert kwargs["tool_choice"] == {"type": "tool", "name": "record_strata_facts"}
 
 
-def test_extra_note_appended_as_second_message():
+def test_extra_note_added_as_text_block_in_single_user_message():
     sdk = MagicMock()
     sdk.messages.create.return_value = _fake_tool_response({})
     client = ClaudeClient(sdk=sdk, model="claude-opus-4-8")
@@ -61,5 +61,6 @@ def test_extra_note_appended_as_second_message():
     )
 
     kwargs = sdk.messages.create.call_args.kwargs
-    assert len(kwargs["messages"]) == 2
-    assert "failed validation" in kwargs["messages"][1]["content"]
+    assert len(kwargs["messages"]) == 1
+    texts = [b["text"] for b in kwargs["messages"][0]["content"] if b["type"] == "text"]
+    assert any("failed validation" in t for t in texts)

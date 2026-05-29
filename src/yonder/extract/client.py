@@ -34,7 +34,7 @@ class ClaudeClient:
         max_tokens: int = 8000,
     ) -> dict:
         b64 = base64.standard_b64encode(pdf_bytes).decode("ascii")
-        first_content = [
+        content = [
             {
                 "type": "document",
                 "source": {
@@ -45,9 +45,9 @@ class ClaudeClient:
             },
             {"type": "text", "text": "Extract the strata facts from this document."},
         ]
-        messages = [{"role": "user", "content": first_content}]
         if extra_note:
-            messages.append({"role": "user", "content": extra_note})
+            content.append({"type": "text", "text": extra_note})
+        messages = [{"role": "user", "content": content}]
 
         message = self._sdk.messages.create(
             model=self.model,
