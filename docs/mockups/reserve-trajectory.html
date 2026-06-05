@@ -89,6 +89,18 @@
     if(o.building&&o.building.name){ document.querySelector('.bname').textContent=o.building.name+(o.building.unit_label?(' · '+o.building.unit_label):''); }
     if(o.building&&o.building.source_note){ document.querySelector('.stale').textContent=o.building.source_note; }
 
+    // Degraded outlook: no projection. Show present-state honestly instead of a NaN chart.
+    if(o.degraded || !a.projection_start_year){
+      document.getElementById('chart').innerHTML='';
+      document.getElementById('verdict').innerHTML='<span style="color:#f59e0b">&#9888; Projection unavailable</span> &mdash; '+(o.degraded_reason||'incomplete data')+(o.start_balance!=null?('. Current reserve &asymp; '+D+Math.round(o.start_balance).toLocaleString()+'.'):'.');
+      document.getElementById('pctLabel').textContent='—';
+      document.getElementById('feeOut').textContent = u.strata_fee_monthly!=null ? (D+u.strata_fee_monthly) : '—';
+      document.getElementById('resOut').textContent = u.reserve_portion_monthly!=null ? (D+u.reserve_portion_monthly) : '—';
+      document.getElementById('levyOut').textContent='—';
+      var _sl=document.getElementById('slider'); if(_sl) _sl.disabled=true;
+      return;
+    }
+
     var X0=46, X1=350, T=26, B=200, VMAX=1300, VMIN=-500, gridVals=[1000,500,0,-500];
     function mapX(y){return X0+(y-Y0)*(X1-X0)/(Y1-Y0);}
     function mapY(v){return T+(VMAX-v)*(B-T)/(VMAX-VMIN);}
