@@ -28,5 +28,6 @@ class ReserveExtract(BaseModel):
     balance_as_of_date: datetime.date | None = None
     recommended_annual_contribution: float | None = None
     funding_model: str | None = None              # free text, e.g. "full funding"
-    interest_or_inflation_rate: float | None = None  # the assumption the report uses, if stated
+    interest_rate: float | None = None            # annual return assumed on the CRF balance, if stated
+    inflation_rate: float | None = None           # annual cost-escalation assumed, if stated
     projected_expenditures: list[ProjectedExpenditure] = Field(default_factory=list)

@@ -1,6 +1,9 @@
 import datetime
 import json
 
+import pytest
+from pydantic import ValidationError
+
 from yonder.outlook.schema import ProjectedExpenditure, ReserveExtract
 
 
@@ -33,7 +36,5 @@ def test_parses_iso_dates_and_round_trips():
 
 
 def test_label_is_required_on_expenditure():
-    import pytest
-    from pydantic import ValidationError
     with pytest.raises(ValidationError):
         ProjectedExpenditure(amount=180000, year=2028)
