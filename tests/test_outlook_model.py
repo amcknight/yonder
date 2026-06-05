@@ -1,3 +1,4 @@
+import datetime
 import json
 
 import pytest
@@ -6,6 +7,7 @@ from pydantic import ValidationError
 from yonder.outlook.model import (
     Assumptions,
     BalancePoint,
+    BuildingMeta,
     Expenditure,
     PlannedFeeChange,
     ReserveOutlook,
@@ -63,3 +65,10 @@ def test_full_outlook_round_trips_through_json():
     back = ReserveOutlook.model_validate_json(blob)
     assert back == o
     assert ReserveOutlook.model_validate(json.loads(blob)) == o
+
+
+def test_building_meta_parses_iso_report_date_and_round_trips():
+    o = ReserveOutlook(building=BuildingMeta(name="The Wexford", depreciation_report_date="2022-05-01"))
+    assert o.building.depreciation_report_date == datetime.date(2022, 5, 1)
+    back = ReserveOutlook.model_validate_json(o.model_dump_json())
+    assert back.building.depreciation_report_date == datetime.date(2022, 5, 1)

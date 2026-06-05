@@ -59,7 +59,8 @@ class TimelineEvent(BaseModel):
 
     year: float
     row: int = 0                              # 0 = upper lane, 1 = lower lane
-    type: str = "work"                        # "work" | "fee" | "meeting" | "levy"
+    type: str = "work"  # open vocabulary; typed core "work"|"fee"|"meeting"|"levy",
+    # renderer falls back gracefully on unknown values (mirrors DocType's OTHER design)
     label: str | None = None
     cluster_items: list[str] | None = None
 
