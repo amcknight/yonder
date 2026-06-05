@@ -2,8 +2,8 @@
 
 Mirrors extract/strata.py: build a forced tool from the Pydantic schema, send
 the whole PDF through the client.py Claude seam, and validate ->
-repair-retry-once -> fail loudly. This call is kept generic (one PDF -> facts)
-so it can later be pointed at any document type, not just depreciation reports.
+repair-retry-once -> fail loudly. This call can later be re-aimed at other document types by swapping the
+system prompt; only the prompt is depreciation-report-specific.
 """
 
 from __future__ import annotations

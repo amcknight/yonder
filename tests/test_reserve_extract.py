@@ -40,6 +40,7 @@ def test_extract_reserve_repairs_once_then_succeeds():
     res = extract_reserve(b"%PDF fake", client=fc)
     assert res.building_name == "Y"
     assert len(fc.calls) == 2
+    assert fc.calls[0]["extra_note"] is None   # first attempt carries no repair note
     assert fc.calls[1]["extra_note"]  # the repair note was sent on the retry
 
 
