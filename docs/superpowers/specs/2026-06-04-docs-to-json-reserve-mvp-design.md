@@ -49,14 +49,25 @@ what can be plain code?* The answer for this MVP:
 | 6. Emit JSON | **Script** | `model_dump_json` → gitignored per-user output. |
 | 7. Render | **done** | the existing mock. |
 
-**The frontier moves toward intelligence over time.** This boundary is a
-*cost-and-confidence* decision, not a permanent architecture. The long-term
-direction is to look at **every** document with intelligence once it is cheaper
-and the pipeline is trusted. So the per-doc intelligence call is kept **generic**
-(one PDF → facts, like the existing `extract/strata.py`): expanding to "read
-everything" later is a *fan-out over docs*, not a rewrite. Nothing in this MVP
-may bake in an assumption that only the depreciation report is ever read by the
-model.
+**The boundary is two layers sliding in opposite directions — not one frontier.**
+
+- **Mechanics → script, with more stages over time.** Orchestration work —
+  routing, dedup, page-prep, assembly, validation, emit — is deterministic glue.
+  The pipeline should grow *more* such stages over time, and each should be plain
+  code wherever code suffices. Scripts get the structure; they do not read meaning.
+- **Content → intelligence, on nearly everything.** Reading and reasoning about a
+  document's *content* — understanding it well enough to report facts — should be
+  done by an LLM for **almost every** document, once intelligence is cheap enough
+  and the pipeline is trusted. The script layer never tries to "understand" a doc;
+  it shuttles docs to/from the model and assembles the results.
+
+These are not in tension: *slide toward scripting* for mechanics, *slide toward
+the LLM* for content understanding. This MVP sits at the cheap end of both — a
+thin script skeleton and a single content-reading call — but must not bake in
+anything that blocks growth on either axis. Concretely, the per-doc intelligence
+call is kept **generic** (one PDF → facts, like `extract/strata.py`), so expanding
+to "read every doc" later is a *fan-out over docs* through more pipeline stages,
+not a rewrite.
 
 ## The intelligence call (step 3)
 
