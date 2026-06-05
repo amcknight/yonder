@@ -27,7 +27,8 @@ contribution. `funding_model` is the scenario name if given (e.g. "full \
 funding", "threshold funding", "cash-flow funding").
 - `interest_rate` is the annual return the model assumes ON the CRF balance; \
 `inflation_rate` is the annual cost-escalation it assumes ON expenditures. These \
-are different numbers — capture each only if the report states it.
+are different numbers — capture each only if the report states it. Express BOTH \
+as decimal fractions, NOT percentages (1.8% -> 0.018, 3.0% -> 0.03).
 - `projected_expenditures` is the financial forecast / expenditure schedule: one \
 entry per major component (roof, envelope, elevators, plumbing, etc.) with its \
 projected cost and the year it falls due. Use `year` for a single year, or \

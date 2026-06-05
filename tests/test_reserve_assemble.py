@@ -1,3 +1,5 @@
+import pytest
+
 from yonder.outlook.assemble import PLACEHOLDER_UNIT, assemble
 from yonder.outlook.model import ReserveOutlook
 from yonder.outlook.schema import ProjectedExpenditure, ReserveExtract
@@ -27,6 +29,25 @@ def test_assemble_maps_real_fields():
     assert o.assumptions.base_annual_contribution == 90000
     assert o.assumptions.sourced is True
     assert o.assumptions.interest_rate == 0.02  # placeholder when report states none
+
+
+def test_assemble_normalizes_percent_interest_rate_to_fraction():
+    # The model sometimes returns 1.8 (percent) instead of 0.018 (fraction).
+    e = ReserveExtract(
+        current_crf_balance=350000,
+        interest_rate=1.8,
+        projected_expenditures=[ProjectedExpenditure(label="Roof", amount=1, year=2028)],
+    )
+    assert assemble(e).assumptions.interest_rate == pytest.approx(0.018)
+
+
+def test_assemble_keeps_fractional_interest_rate_as_is():
+    e = ReserveExtract(
+        current_crf_balance=350000,
+        interest_rate=0.025,
+        projected_expenditures=[ProjectedExpenditure(label="Roof", amount=1, year=2028)],
+    )
+    assert assemble(e).assumptions.interest_rate == 0.025
 
 
 def test_assemble_collapses_expenditures_to_points_on_the_timeline():

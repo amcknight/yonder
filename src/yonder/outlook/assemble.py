@@ -48,6 +48,15 @@ def _source_note(extract: ReserveExtract) -> str:
     return f"deprec. report {yr} · unit figures placeholder"
 
 
+def _rate_as_fraction(rate: float | None) -> float:
+    """Normalize an interest rate to a decimal fraction. Models sometimes return
+    the percentage value (1.8 for 1.8%) instead of the fraction (0.018); a real
+    CRF rate is never > 1, so treat anything above that as a percent."""
+    if rate is None:
+        return 0.02
+    return rate / 100 if abs(rate) > 1 else rate
+
+
 def assemble(extract: ReserveExtract, *, unit: Unit = PLACEHOLDER_UNIT) -> ReserveOutlook:
     building = BuildingMeta(
         name=extract.building_name,
@@ -85,9 +94,7 @@ def assemble(extract: ReserveExtract, *, unit: Unit = PLACEHOLDER_UNIT) -> Reser
         horizon = proj_start + _DEFAULT_HORIZON_YEARS
 
     assumptions = Assumptions(
-        interest_rate=(
-            extract.interest_rate if extract.interest_rate is not None else 0.02
-        ),
+        interest_rate=_rate_as_fraction(extract.interest_rate),
         base_annual_contribution=extract.recommended_annual_contribution,
         history_start_year=proj_start,
         projection_start_year=proj_start,
