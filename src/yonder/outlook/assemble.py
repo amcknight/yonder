@@ -28,6 +28,8 @@ PLACEHOLDER_UNIT = Unit(
     reserve_portion_monthly=50,
 )
 
+_DEFAULT_HORIZON_YEARS = 30  # fallback projection span when the report gives only one datable year
+
 
 def _year_of(e: ProjectedExpenditure) -> int | None:
     return e.year if e.year is not None else e.start_year
@@ -54,8 +56,10 @@ def assemble(extract: ReserveExtract, *, unit: Unit = PLACEHOLDER_UNIT) -> Reser
     )
     # Collapse every expenditure to a single timeline year (the mock renders only
     # one range band; collapsing keeps all expenditures correct in the projection).
+    # Collapsing a range to one year also shifts its full cost to that year in the
+    # projection itself (a modeling simplification, not only a rendering one).
     points = [
-        Expenditure(label=e.label, amount=e.amount or 0.0, year=_year_of(e))
+        Expenditure(label=e.label, amount=e.amount if e.amount is not None else 0.0, year=_year_of(e))
         for e in extract.projected_expenditures
         if _year_of(e) is not None
     ]
@@ -78,7 +82,7 @@ def assemble(extract: ReserveExtract, *, unit: Unit = PLACEHOLDER_UNIT) -> Reser
     proj_start = anchor.year if anchor else min(p.year for p in points)
     horizon = max(p.year for p in points)
     if horizon <= proj_start:
-        horizon = proj_start + 30
+        horizon = proj_start + _DEFAULT_HORIZON_YEARS
 
     assumptions = Assumptions(
         interest_rate=(

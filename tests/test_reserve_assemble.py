@@ -48,6 +48,7 @@ def test_assemble_derives_work_events_alternating_rows():
     assert [e.row for e in o.events] == [0, 1]
     assert o.events[0].label.startswith("Roof")
     assert "1.1M" in o.events[1].label
+    assert "180k" in o.events[0].label   # sub-$1M formats as $Nk
 
 
 def test_assemble_uses_placeholder_unit():
@@ -66,3 +67,17 @@ def test_assemble_degrades_when_no_balance_or_no_expenditures():
     o2 = assemble(no_exp)
     assert o2.degraded is True and "expenditure" in o2.degraded_reason
     assert o2.start_balance == 350000  # present-state still carried
+
+
+def test_assemble_derives_start_from_earliest_expenditure_when_no_dates():
+    e = ReserveExtract(
+        current_crf_balance=350000,
+        projected_expenditures=[
+            ProjectedExpenditure(label="Roof", amount=180000, year=2028),
+            ProjectedExpenditure(label="Elev", amount=240000, year=2035),
+        ],
+    )
+    o = assemble(e)
+    assert o.degraded is False
+    assert o.assumptions.projection_start_year == 2028  # earliest expenditure, no dates given
+    assert o.assumptions.horizon_end_year == 2035
