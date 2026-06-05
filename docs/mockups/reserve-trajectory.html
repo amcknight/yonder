@@ -65,119 +65,133 @@
 
 <script>
 (function(){
-  var actual={2020:260,2021:300,2022:215,2023:285,2024:360,2025:415,2026:420};
-  var pointWork={2028:{amt:180},2030:{amt:150},2035:{amt:240},2038:{amt:200}};
-  var rangeWork={start:2031,end:2033,peak:2032,amt:1100};
-  function expAt(y){ var e=(pointWork[y]&&pointWork[y].amt)||0; if(y===rangeWork.peak)e+=rangeWork.amt; return e; }
-  var feeSchedule={2028:0.10, 2031:0.06};
-  var startBal=420, baseAnnual=90, interest=0.02;
-  var unitShare=18/2719, baseFee=486, resBase=50;
-  var NOW=2026, Y0=2020, Y1=2041;
-  var X0=46, X1=350, T=26, B=200, VMAX=1300, VMIN=-500, gridVals=[1000,500,0,-500];
   var NS='http://www.w3.org/2000/svg', D=String.fromCharCode(36);
-  function mapX(y){return X0+(y-Y0)*(X1-X0)/(Y1-Y0);}
-  function mapY(v){return T+(VMAX-v)*(B-T)/(VMAX-VMIN);}
-  var zeroY=mapY(0), nowX=mapX(NOW);
-  function money(v){ if(v===0) return D+'0'; var s=(Math.abs(v)>=1000)?(D+(Math.abs(v)/1000).toFixed(1)+'M'):(D+Math.abs(v)+'k'); return (v<0?'-':'')+s; }
-  function el(tag,a,txt){var e=document.createElementNS(NS,tag);for(var k in a)e.setAttribute(k,a[k]);if(txt!=null)e.textContent=txt;return e;}
-  function feeFactor(y){ var f=1; for(var k in feeSchedule){ if(+k<=y) f*=(1+feeSchedule[k]); } return f; }
 
-  function sim(incr){
-    var wl=startBal, ul=startBal, wlA=[{y:NOW,b:wl}], ulA=[{y:NOW,b:ul}], levies=[];
-    for(var y=NOW+1;y<=Y1;y++){
-      var contrib=baseAnnual*(1+incr)*feeFactor(y), e=expAt(y);
-      ul = ul*(1+interest)+contrib - e;
-      var pre = wl*(1+interest)+contrib - e;
-      if(pre<0){ var lv=-pre; levies.push({y:y,total:lv,perUnit:lv*1000*unitShare}); wl=0; }
-      else wl=pre;
-      wlA.push({y:y,b:wl}); ulA.push({y:y,b:ul});
-    }
-    return {wlA:wlA, ulA:ulA, levies:levies, totUnit:levies.reduce(function(a,L){return a+L.perUnit;},0)};
-  }
+  function init(o){
+    var a=o.assumptions||{}, u=o.unit||{};
+    // ---- derive constants from the ReserveOutlook JSON (dollars -> $k for the chart) ----
+    var actual={}; (o.history||[]).forEach(function(p){ actual[p.year]=p.balance/1000; });
+    var pointWork={}, rangeWork=null;
+    (o.expenditures||[]).forEach(function(e){
+      if(e.start_year!=null){ rangeWork={start:e.start_year,end:e.end_year,peak:e.peak_year||e.start_year,amt:e.amount/1000,label:e.label}; }
+      else { pointWork[e.year]={amt:e.amount/1000,label:e.label}; }
+    });
+    var feeSchedule={}; (o.planned_fee_changes||[]).forEach(function(f){ feeSchedule[f.effective_year]=f.pct; });
+    var startBal=(o.start_balance||0)/1000, baseAnnual=(a.base_annual_contribution||0)/1000;
+    var interest=a.interest_rate!=null?a.interest_rate:0.02;
+    var unitShare=(u.entitlement_numerator&&u.entitlement_denominator)?(u.entitlement_numerator/u.entitlement_denominator):0;
+    var baseFee=u.strata_fee_monthly||0, resBase=u.reserve_portion_monthly||0;
+    var NOW=a.projection_start_year, Y0=a.history_start_year, Y1=a.horizon_end_year;
+    var events=(o.events||[]).map(function(ev){
+      return ev.cluster_items?{cluster:true,x:ev.year,row:ev.row||0,items:ev.cluster_items}
+                             :{x:ev.year,row:ev.row||0,type:ev.type,label:ev.label};
+    });
+    if(o.building&&o.building.name){ document.querySelector('.bname').textContent=o.building.name+(o.building.unit_label?(' · '+o.building.unit_label):''); }
+    if(o.building&&o.building.source_note){ document.querySelector('.stale').textContent=o.building.source_note; }
 
-  var colors={work:'#6366f1',fee:'#fbbf24',meeting:'#94a3b8',levy:'#22c55e'};
-  var events=[
-    {x:2028,   row:0, type:'work', label:'Roof 180k'},
-    {x:2032,   row:0, type:'work', label:'Envelope 1.1M'},
-    {x:2035,   row:0, type:'work', label:'Elev 240k'},
-    {x:2027.75,row:1, type:'fee',  label:'+10% plan'},
-    {x:2038,   row:1, type:'work', label:'HVAC 200k'},
-    {cluster:true, x:2030, row:1, items:['Plumbing 150k','+6% planned','AGM 2030']}
-  ];
-  var rowDotY=[214,232], rowLblY=[226,244];
-  var clusterOpen=false, cur=0;
-  var svg=document.getElementById('chart');
+    var X0=46, X1=350, T=26, B=200, VMAX=1300, VMIN=-500, gridVals=[1000,500,0,-500];
+    function mapX(y){return X0+(y-Y0)*(X1-X0)/(Y1-Y0);}
+    function mapY(v){return T+(VMAX-v)*(B-T)/(VMAX-VMIN);}
+    var zeroY=mapY(0), nowX=mapX(NOW);
+    function money(v){ if(v===0) return D+'0'; var s=(Math.abs(v)>=1000)?(D+(Math.abs(v)/1000).toFixed(1)+'M'):(D+Math.abs(v)+'k'); return (v<0?'-':'')+s; }
+    function el(tag,at,txt){var e=document.createElementNS(NS,tag);for(var k in at)e.setAttribute(k,at[k]);if(txt!=null)e.textContent=txt;return e;}
+    function feeFactor(y){ var f=1; for(var k in feeSchedule){ if(+k<=y) f*=(1+feeSchedule[k]); } return f; }
 
-  function drawEvents(){
-    events.forEach(function(ev){
-      var ex=mapX(ev.x), dy=rowDotY[ev.row], ly=rowLblY[ev.row];
-      svg.appendChild(el('line',{x1:ex,y1:B,x2:ex,y2:dy-7,stroke:'#475569','stroke-width':1,opacity:0.5}));
-      if(ev.type==='fee'){ svg.appendChild(el('line',{x1:ex,y1:T,x2:ex,y2:B,stroke:'#fbbf24','stroke-dasharray':'2 3','stroke-width':1,opacity:0.4})); }
-      if(ev.cluster){
-        var g=el('g',{onclick:'__tc()',style:'cursor:pointer'});
-        g.appendChild(el('circle',{cx:ex,cy:dy,r:8,fill:'#1e293b',stroke:'#94a3b8','stroke-width':1.2}));
-        g.appendChild(el('text',{x:ex,y:dy+3.5,'text-anchor':'middle','font-size':10,fill:'#e2e8f0'},clusterOpen?'×':String(ev.items.length)));
-        svg.appendChild(g);
-        if(clusterOpen){ ev.items.forEach(function(it,i){
-          svg.appendChild(el('text',{x:ex,y:dy+20+i*12,'text-anchor':'middle','font-size':8,fill:'#cbd5e1'},it)); }); }
-      } else {
-        svg.appendChild(el('circle',{cx:ex,cy:dy,r:3,fill:colors[ev.type]}));
-        svg.appendChild(el('text',{x:ex,y:ly+5,'text-anchor':'middle','font-size':8,fill:'#cbd5e1'},ev.label));
+    function sim(incr){
+      var wl=startBal, ul=startBal, wlA=[{y:NOW,b:wl}], ulA=[{y:NOW,b:ul}], levies=[];
+      for(var y=NOW+1;y<=Y1;y++){
+        var contrib=baseAnnual*(1+incr)*feeFactor(y), e=(pointWork[y]&&pointWork[y].amt)||0;
+        if(rangeWork&&y===rangeWork.peak) e+=rangeWork.amt;
+        ul = ul*(1+interest)+contrib - e;
+        var pre = wl*(1+interest)+contrib - e;
+        if(pre<0){ var lv=-pre; levies.push({y:y,total:lv,perUnit:lv*1000*unitShare}); wl=0; }
+        else wl=pre;
+        wlA.push({y:y,b:wl}); ulA.push({y:y,b:ul});
       }
-    });
-  }
-
-  function draw(incr){
-    cur=incr; svg.innerHTML='';
-    // year axis at TOP
-    [2020,2023,2026,2029,2032,2035,2038,2041].forEach(function(yr){
-      var z=(yr===2026);
-      svg.appendChild(el('text',{x:mapX(yr),y:12,'text-anchor':'middle','font-size':9,fill:z?'#22c55e':'#475569'},z?'now':String(yr))); });
-    // gridlines
-    gridVals.forEach(function(v){ var gy=mapY(v),z=(v===0);
-      svg.appendChild(el('line',{x1:X0,y1:gy,x2:X1,y2:gy,stroke:z?'#64748b':'#334155','stroke-width':1,'stroke-dasharray':z?'3 3':'2 4'}));
-      svg.appendChild(el('text',{x:X0-6,y:gy+3,'text-anchor':'end','font-size':10,fill:z?'#94a3b8':'#64748b'},money(v))); });
-    svg.appendChild(el('rect',{x:X0,y:T,width:nowX-X0,height:B-T,fill:'#ffffff',opacity:0.03}));
-    svg.appendChild(el('line',{x1:nowX,y1:T,x2:nowX,y2:B,stroke:'#22c55e','stroke-width':1.5,opacity:0.8}));
-
-    var s=sim(incr);
-    s.levies.forEach(function(L){ var h=L.total*(B-T)/(VMAX-VMIN);
-      svg.appendChild(el('rect',{x:mapX(L.y)-6,y:Math.max(zeroY-h,T),width:12,height:Math.min(h,zeroY-T),rx:2,fill:'#22c55e',opacity:0.5}));
-      svg.appendChild(el('text',{x:mapX(L.y),y:Math.max(zeroY-h,T)-3,'text-anchor':'middle','font-size':8.5,fill:'#86efac'},'+'+D+Math.round(L.perUnit).toLocaleString()+'/u'));
-    });
-    var rh=rangeWork.amt*(B-T)/(VMAX-VMIN);
-    svg.appendChild(el('rect',{x:mapX(rangeWork.start),y:zeroY,width:mapX(rangeWork.end)-mapX(rangeWork.start),height:Math.min(rh,B-zeroY),rx:2,fill:'#6366f1',opacity:0.28}));
-    svg.appendChild(el('rect',{x:mapX(rangeWork.peak)-2,y:zeroY,width:4,height:Math.min(rh,B-zeroY),fill:'#6366f1',opacity:0.6}));
-    for(var y in pointWork){ var amt=pointWork[y].amt, h2=amt*(B-T)/(VMAX-VMIN);
-      svg.appendChild(el('rect',{x:mapX(+y)-5,y:zeroY,width:10,height:Math.min(h2,B-zeroY),rx:2,fill:'#6366f1',opacity:0.6})); }
-
-    var aPts=[]; for(var ya=Y0;ya<=NOW;ya++){ aPts.push(mapX(ya)+','+mapY(actual[ya])); }
-    svg.appendChild(el('polyline',{points:aPts.join(' '),fill:'none',stroke:'#38bdf8','stroke-width':2.5,'stroke-linejoin':'round'}));
-    var ulPts=s.ulA.map(function(p){return mapX(p.y)+','+mapY(Math.max(p.b,VMIN));});
-    svg.appendChild(el('polyline',{points:ulPts.join(' '),fill:'none',stroke:'#f59e0b','stroke-width':1.6,'stroke-dasharray':'4 3',opacity:0.7}));
-    var wlPts=s.wlA.map(function(p){return mapX(p.y)+','+mapY(p.b);});
-    svg.appendChild(el('polyline',{points:wlPts.join(' '),fill:'none',stroke:'#22c55e','stroke-width':2.6,'stroke-linejoin':'round'}));
-
-    drawEvents();
-
-    document.getElementById('pctLabel').textContent=(incr>=0?'+':'')+Math.round(incr*100)+'%';
-    var newFee=Math.round(baseFee+resBase*incr), newRes=Math.round(resBase*(1+incr));
-    var feeEl=document.getElementById('feeOut'); feeEl.textContent=D+newFee; feeEl.style.color=incr!==0?'#fbbf24':'#e2e8f0';
-    document.getElementById('resOut').textContent=D+newRes;
-    var levyEl=document.getElementById('levyOut'), verdict=document.getElementById('verdict');
-    if(s.levies.length===0){
-      levyEl.textContent=D+'0'; levyEl.style.color='#22c55e';
-      verdict.innerHTML='<span style="color:#22c55e">&#10003; No levies needed</span> &mdash; planned increases + your slider cover every project.';
-    } else {
-      levyEl.textContent='~'+D+Math.round(s.totUnit).toLocaleString(); levyEl.style.color='#ef4444';
-      var first=s.levies[0];
-      verdict.innerHTML='<span style="color:#f59e0b">'+s.levies.length+' levy'+(s.levies.length>1?'s':'')+'</span> &mdash; first '+first.y+' (~'+D+Math.round(first.perUnit).toLocaleString()+'/unit). Fund tops back to $0.';
+      return {wlA:wlA, ulA:ulA, levies:levies, totUnit:levies.reduce(function(s,L){return s+L.perUnit;},0)};
     }
+
+    var colors={work:'#6366f1',fee:'#fbbf24',meeting:'#94a3b8',levy:'#22c55e'};
+    var rowDotY=[214,232], rowLblY=[226,244];
+    var clusterOpen=false, cur=0;
+    var svg=document.getElementById('chart');
+
+    function drawEvents(){
+      events.forEach(function(ev){
+        var ex=mapX(ev.x), dy=rowDotY[ev.row], ly=rowLblY[ev.row];
+        svg.appendChild(el('line',{x1:ex,y1:B,x2:ex,y2:dy-7,stroke:'#475569','stroke-width':1,opacity:0.5}));
+        if(ev.type==='fee'){ svg.appendChild(el('line',{x1:ex,y1:T,x2:ex,y2:B,stroke:'#fbbf24','stroke-dasharray':'2 3','stroke-width':1,opacity:0.4})); }
+        if(ev.cluster){
+          var g=el('g',{onclick:'__tc()',style:'cursor:pointer'});
+          g.appendChild(el('circle',{cx:ex,cy:dy,r:8,fill:'#1e293b',stroke:'#94a3b8','stroke-width':1.2}));
+          g.appendChild(el('text',{x:ex,y:dy+3.5,'text-anchor':'middle','font-size':10,fill:'#e2e8f0'},clusterOpen?'×':String(ev.items.length)));
+          svg.appendChild(g);
+          if(clusterOpen){ ev.items.forEach(function(it,i){
+            svg.appendChild(el('text',{x:ex,y:dy+20+i*12,'text-anchor':'middle','font-size':8,fill:'#cbd5e1'},it)); }); }
+        } else {
+          svg.appendChild(el('circle',{cx:ex,cy:dy,r:3,fill:colors[ev.type]||'#94a3b8'}));
+          svg.appendChild(el('text',{x:ex,y:ly+5,'text-anchor':'middle','font-size':8,fill:'#cbd5e1'},ev.label));
+        }
+      });
+    }
+
+    function draw(incr){
+      cur=incr; svg.innerHTML='';
+      [Y0,Y0+3,NOW,NOW+3,NOW+6,NOW+9,NOW+12,Y1].forEach(function(yr){
+        if(yr<Y0||yr>Y1) return;
+        var z=(yr===NOW);
+        svg.appendChild(el('text',{x:mapX(yr),y:12,'text-anchor':'middle','font-size':9,fill:z?'#22c55e':'#475569'},z?'now':String(yr))); });
+      gridVals.forEach(function(v){ var gy=mapY(v),z=(v===0);
+        svg.appendChild(el('line',{x1:X0,y1:gy,x2:X1,y2:gy,stroke:z?'#64748b':'#334155','stroke-width':1,'stroke-dasharray':z?'3 3':'2 4'}));
+        svg.appendChild(el('text',{x:X0-6,y:gy+3,'text-anchor':'end','font-size':10,fill:z?'#94a3b8':'#64748b'},money(v))); });
+      svg.appendChild(el('rect',{x:X0,y:T,width:nowX-X0,height:B-T,fill:'#ffffff',opacity:0.03}));
+      svg.appendChild(el('line',{x1:nowX,y1:T,x2:nowX,y2:B,stroke:'#22c55e','stroke-width':1.5,opacity:0.8}));
+
+      var s=sim(incr);
+      s.levies.forEach(function(L){ var h=L.total*(B-T)/(VMAX-VMIN);
+        svg.appendChild(el('rect',{x:mapX(L.y)-6,y:Math.max(zeroY-h,T),width:12,height:Math.min(h,zeroY-T),rx:2,fill:'#22c55e',opacity:0.5}));
+        svg.appendChild(el('text',{x:mapX(L.y),y:Math.max(zeroY-h,T)-3,'text-anchor':'middle','font-size':8.5,fill:'#86efac'},'+'+D+Math.round(L.perUnit).toLocaleString()+'/u'));
+      });
+      if(rangeWork){ var rh=rangeWork.amt*(B-T)/(VMAX-VMIN);
+        svg.appendChild(el('rect',{x:mapX(rangeWork.start),y:zeroY,width:mapX(rangeWork.end)-mapX(rangeWork.start),height:Math.min(rh,B-zeroY),rx:2,fill:'#6366f1',opacity:0.28}));
+        svg.appendChild(el('rect',{x:mapX(rangeWork.peak)-2,y:zeroY,width:4,height:Math.min(rh,B-zeroY),fill:'#6366f1',opacity:0.6})); }
+      for(var y in pointWork){ var amt=pointWork[y].amt, h2=amt*(B-T)/(VMAX-VMIN);
+        svg.appendChild(el('rect',{x:mapX(+y)-5,y:zeroY,width:10,height:Math.min(h2,B-zeroY),rx:2,fill:'#6366f1',opacity:0.6})); }
+
+      var aPts=[]; for(var ya=Y0;ya<=NOW;ya++){ if(actual[ya]!=null) aPts.push(mapX(ya)+','+mapY(actual[ya])); }
+      svg.appendChild(el('polyline',{points:aPts.join(' '),fill:'none',stroke:'#38bdf8','stroke-width':2.5,'stroke-linejoin':'round'}));
+      var ulPts=s.ulA.map(function(p){return mapX(p.y)+','+mapY(Math.max(p.b,VMIN));});
+      svg.appendChild(el('polyline',{points:ulPts.join(' '),fill:'none',stroke:'#f59e0b','stroke-width':1.6,'stroke-dasharray':'4 3',opacity:0.7}));
+      var wlPts=s.wlA.map(function(p){return mapX(p.y)+','+mapY(p.b);});
+      svg.appendChild(el('polyline',{points:wlPts.join(' '),fill:'none',stroke:'#22c55e','stroke-width':2.6,'stroke-linejoin':'round'}));
+
+      drawEvents();
+
+      document.getElementById('pctLabel').textContent=(incr>=0?'+':'')+Math.round(incr*100)+'%';
+      var newFee=Math.round(baseFee+resBase*incr), newRes=Math.round(resBase*(1+incr));
+      var feeEl=document.getElementById('feeOut'); feeEl.textContent=D+newFee; feeEl.style.color=incr!==0?'#fbbf24':'#e2e8f0';
+      document.getElementById('resOut').textContent=D+newRes;
+      var levyEl=document.getElementById('levyOut'), verdict=document.getElementById('verdict');
+      if(s.levies.length===0){
+        levyEl.textContent=D+'0'; levyEl.style.color='#22c55e';
+        verdict.innerHTML='<span style="color:#22c55e">&#10003; No levies needed</span> &mdash; planned increases + your slider cover every project.';
+      } else {
+        levyEl.textContent='~'+D+Math.round(s.totUnit).toLocaleString(); levyEl.style.color='#ef4444';
+        var first=s.levies[0];
+        verdict.innerHTML='<span style="color:#f59e0b">'+s.levies.length+' levy'+(s.levies.length>1?'s':'')+'</span> &mdash; first '+first.y+' (~'+D+Math.round(first.perUnit).toLocaleString()+'/unit). Fund tops back to $0.';
+      }
+    }
+    window.__tc=function(){ clusterOpen=!clusterOpen; draw(cur); };
+    var slider=document.getElementById('slider');
+    slider.addEventListener('input',function(){ draw(slider.value/100); });
+    draw(0);
   }
-  window.__tc=function(){ clusterOpen=!clusterOpen; draw(cur); };
-  var slider=document.getElementById('slider');
-  slider.addEventListener('input',function(){ draw(slider.value/100); });
-  draw(0);
+
+  function fail(msg){ var v=document.getElementById('verdict'); if(v) v.textContent=msg; }
+  fetch('../../fixtures/samples/reserve_outlook.sample.json')
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(init)
+    .catch(function(e){ fail('Could not load reserve_outlook.sample.json. Serve the repo root over http (python -m http.server) and open this page via http://localhost:8000/docs/mockups/reserve-trajectory.html  ['+e.message+']'); });
 })();
 </script>
 </body>
