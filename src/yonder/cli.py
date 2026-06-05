@@ -11,7 +11,7 @@ from yonder.eval.score import FieldResult, ResultType, score_extract, tally
 from yonder.extract.client import ClaudeClient
 from yonder.extract.strata import extract_strata
 from yonder.outlook.assemble import assemble
-from yonder.outlook.extract import extract_reserve
+from yonder.outlook.extract import extract_reserve, extract_reserve_from_text
 from yonder.outlook.sample import wexford_sample
 
 _SYMBOL = {
@@ -105,9 +105,16 @@ def cmd_eval(args: argparse.Namespace) -> int:
 
 
 def cmd_outlook(args: argparse.Namespace) -> int:
-    pdf = Path(args.pdf)
-    out = Path(args.out) if args.out else pdf.parent / f"{pdf.stem}.reserve_outlook.json"
-    extract = extract_reserve(pdf.read_bytes(), client=_build_client())
+    src = Path(args.pdf)
+    out = Path(args.out) if args.out else src.parent / f"{src.stem}.reserve_outlook.json"
+    client = _build_client()
+    if src.suffix.lower() == ".txt":
+        # Cheaper text path: feed an already-parsed report instead of the PDF.
+        extract = extract_reserve_from_text(
+            src.read_text(encoding="utf-8", errors="replace"), client=client
+        )
+    else:
+        extract = extract_reserve(src.read_bytes(), client=client)
     outlook = assemble(extract)
     out.write_text(outlook.model_dump_json(indent=2) + "\n", encoding="utf-8")
     print(f"wrote {out}")
@@ -143,9 +150,11 @@ def main(argv: list[str] | None = None) -> int:
     p_sample.set_defaults(func=cmd_outlook_sample)
 
     p_outlook = sub.add_parser(
-        "outlook", help="Extract a depreciation-report PDF into a ReserveOutlook JSON."
+        "outlook",
+        help="Extract a depreciation report (.pdf or already-parsed .txt) into a "
+        "ReserveOutlook JSON.",
     )
-    p_outlook.add_argument("pdf")
+    p_outlook.add_argument("pdf", help="path to the report .pdf, or a .txt of its parsed text")
     p_outlook.add_argument("out", nargs="?", default=None)
     p_outlook.set_defaults(func=cmd_outlook)
 

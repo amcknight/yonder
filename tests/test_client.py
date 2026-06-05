@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock
 
+import pytest
+
 from yonder.extract.client import ClaudeClient
 
 
@@ -64,3 +66,30 @@ def test_extra_note_added_as_text_block_in_single_user_message():
     assert len(kwargs["messages"]) == 1
     texts = [b["text"] for b in kwargs["messages"][0]["content"] if b["type"] == "text"]
     assert any("failed validation" in t for t in texts)
+
+
+def test_extract_with_tool_sends_text_block_when_given_text():
+    sdk = MagicMock()
+    sdk.messages.create.return_value = _fake_tool_response({})
+    client = ClaudeClient(sdk=sdk, model="claude-opus-4-8")
+
+    client.extract_with_tool(
+        system="sys",
+        tool={"name": "record_strata_facts", "input_schema": {"type": "object"}},
+        tool_name="record_strata_facts",
+        text="ROOF replacement 2028 $180,000",
+    )
+
+    blocks = sdk.messages.create.call_args.kwargs["messages"][0]["content"]
+    assert all(b["type"] != "document" for b in blocks)  # no PDF page-images
+    assert any(b["type"] == "text" and "ROOF replacement" in b["text"] for b in blocks)
+
+
+def test_extract_with_tool_requires_exactly_one_source():
+    client = ClaudeClient(sdk=MagicMock(), model="claude-opus-4-8")
+    tool = {"name": "t", "input_schema": {"type": "object"}}
+    with pytest.raises(ValueError):
+        client.extract_with_tool(system="s", tool=tool, tool_name="t")  # neither
+    with pytest.raises(ValueError):
+        client.extract_with_tool(system="s", tool=tool, tool_name="t",
+                                 pdf_bytes=b"x", text="y")  # both

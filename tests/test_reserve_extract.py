@@ -1,7 +1,12 @@
 import pytest
 from pydantic import ValidationError
 
-from yonder.outlook.extract import extract_reserve, reserve_tool, TOOL_NAME
+from yonder.outlook.extract import (
+    TOOL_NAME,
+    extract_reserve,
+    extract_reserve_from_text,
+    reserve_tool,
+)
 
 
 class FakeClient:
@@ -49,3 +54,15 @@ def test_extract_reserve_raises_if_both_attempts_invalid():
     fc = FakeClient([bad, bad])
     with pytest.raises(ValidationError):
         extract_reserve(b"%PDF fake", client=fc)
+
+
+def test_extract_reserve_from_text_passes_text_not_pdf():
+    fc = FakeClient([{
+        "building_name": "Z",
+        "current_crf_balance": 900000,
+        "projected_expenditures": [{"label": "Roof", "amount": 180000, "year": 2028}],
+    }])
+    res = extract_reserve_from_text("some parsed report text", client=fc)
+    assert res.building_name == "Z"
+    assert fc.calls[0]["text"] == "some parsed report text"
+    assert "pdf_bytes" not in fc.calls[0]

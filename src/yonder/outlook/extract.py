@@ -44,21 +44,20 @@ def reserve_tool() -> dict:
     }
 
 
-def extract_reserve(pdf_bytes: bytes, *, client) -> ReserveExtract:
-    """Extract a ReserveExtract from PDF bytes. Retries once with the validation
-    error fed back to the model; raises ValidationError if the retry is also
-    invalid."""
+def _run(client, **source) -> ReserveExtract:
+    """Shared validate -> repair-retry-once -> fail loop. `source` is exactly one
+    of pdf_bytes=... or text=..., forwarded to client.extract_with_tool."""
     tool = reserve_tool()
     extra_note: str | None = None
     last_error: ValidationError | None = None
 
     for _ in range(2):
         raw = client.extract_with_tool(
-            pdf_bytes=pdf_bytes,
             system=SYSTEM_PROMPT,
             tool=tool,
             tool_name=TOOL_NAME,
             extra_note=extra_note,
+            **source,
         )
         try:
             return ReserveExtract.model_validate(raw)
@@ -73,3 +72,15 @@ def extract_reserve(pdf_bytes: bytes, *, client) -> ReserveExtract:
 
     assert last_error is not None
     raise last_error
+
+
+def extract_reserve(pdf_bytes: bytes, *, client) -> ReserveExtract:
+    """Extract a ReserveExtract from a depreciation-report PDF (text + page
+    images)."""
+    return _run(client, pdf_bytes=pdf_bytes)
+
+
+def extract_reserve_from_text(text: str, *, client) -> ReserveExtract:
+    """Extract a ReserveExtract from a report's already-parsed text (cheaper: no
+    page images). Same prompt and repair loop as the PDF path."""
+    return _run(client, text=text)

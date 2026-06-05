@@ -26,25 +26,37 @@ class ClaudeClient:
     def extract_with_tool(
         self,
         *,
-        pdf_bytes: bytes,
         system: str,
         tool: dict,
         tool_name: str,
+        pdf_bytes: bytes | None = None,
+        text: str | None = None,
         extra_note: str | None = None,
         max_tokens: int = 8000,
     ) -> dict:
-        b64 = base64.standard_b64encode(pdf_bytes).decode("ascii")
-        content = [
-            {
-                "type": "document",
-                "source": {
-                    "type": "base64",
-                    "media_type": "application/pdf",
-                    "data": b64,
+        """Send a document to Claude for forced tool-use. Provide exactly one of
+        `pdf_bytes` (sent as a PDF document block — text + page images, costlier)
+        or `text` (sent as a plain text block — cheaper, no page images)."""
+        if (pdf_bytes is None) == (text is None):
+            raise ValueError("Provide exactly one of pdf_bytes or text.")
+        if text is not None:
+            content = [
+                {"type": "text", "text": "Document (extracted text) follows:\n\n" + text},
+                {"type": "text", "text": "Extract the requested facts from this document."},
+            ]
+        else:
+            b64 = base64.standard_b64encode(pdf_bytes).decode("ascii")
+            content = [
+                {
+                    "type": "document",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "application/pdf",
+                        "data": b64,
+                    },
                 },
-            },
-            {"type": "text", "text": "Extract the strata facts from this document."},
-        ]
+                {"type": "text", "text": "Extract the strata facts from this document."},
+            ]
         if extra_note:
             content.append({"type": "text", "text": extra_note})
         messages = [{"role": "user", "content": content}]
