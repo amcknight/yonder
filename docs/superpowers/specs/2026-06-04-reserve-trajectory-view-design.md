@@ -73,6 +73,35 @@ OCR/heavy-parse stay deferred-until-hit). Rejected: hard-coding model assumption
 (interest rate, fee-escalation default) as truth — they are **placeholder assumptions**
 until grounded by the deferred deep-research pass.
 
+## Build order & the JSON seam (chosen)
+
+This slice splits at the `ReserveOutlook` **JSON contract**, and we build
+**json → dashboard first, then docs → json**:
+
+1. **json → dashboard (first).** Freeze the `ReserveOutlook` JSON shape; hand-author a
+   realistic instance (reading Spectrum 4's depreciation report by hand); rewire the
+   committed mock (`docs/mockups/reserve-trajectory.html`) to *consume that JSON*
+   instead of its hardcoded JS constants. Outcome: a runnable end-to-end render of
+   real-shaped data, and — more importantly — a **frozen contract** that becomes the
+   concrete target for the extraction half.
+2. **docs → json (second).** Build classify → aggregate → extract → `reserve_outlook`
+   to *produce* that JSON from Spectrum 4's actual docs — building toward a known
+   target instead of a moving one.
+
+**Storage = JSON** for the prototype (per-user, ephemeral — the one rule). SQLite is
+unnecessary for a single building's outlook; Postgres is the eventual cloud target
+(architecture sketch), not this slice. Revisit only when querying across many
+docs/buildings/users is real.
+
+**Selective extraction, not all 63.** The reserve view needs only ~4–8 documents — the
+latest depreciation report, Form B, recent financial statements, recent minutes — so
+classify's job is to *select* those, not organize the whole folder. Spectrum 4's
+subfolders already signal most of them; Claude-assisted classification is a fallback
+for unlabeled files, not the primary cost. The extraction core itself already exists
+(Prototype 1: `client.py` / `strata.py` / `schema.py`); the genuinely hard, risky part
+is pulling the depreciation report's **30-year expenditure tables** — that risk lives
+entirely in the docs→json half, which is exactly why we freeze the contract first.
+
 ## The view (locked design)
 
 What the chart shows — validated across six mock iterations:
