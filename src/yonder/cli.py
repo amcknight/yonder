@@ -10,6 +10,8 @@ from pathlib import Path
 from yonder.eval.score import FieldResult, ResultType, score_extract, tally
 from yonder.extract.client import ClaudeClient
 from yonder.extract.strata import extract_strata
+from yonder.outlook.assemble import assemble
+from yonder.outlook.extract import extract_reserve
 from yonder.outlook.sample import wexford_sample
 
 _SYMBOL = {
@@ -102,6 +104,16 @@ def cmd_eval(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_outlook(args: argparse.Namespace) -> int:
+    pdf = Path(args.pdf)
+    out = Path(args.out) if args.out else pdf.parent / f"{pdf.stem}.reserve_outlook.json"
+    extract = extract_reserve(pdf.read_bytes(), client=_build_client())
+    outlook = assemble(extract)
+    out.write_text(outlook.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    print(f"wrote {out}")
+    return 0
+
+
 def cmd_outlook_sample(args: argparse.Namespace) -> int:
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -129,6 +141,13 @@ def main(argv: list[str] | None = None) -> int:
         "out", nargs="?", default="fixtures/samples/reserve_outlook.sample.json"
     )
     p_sample.set_defaults(func=cmd_outlook_sample)
+
+    p_outlook = sub.add_parser(
+        "outlook", help="Extract a depreciation-report PDF into a ReserveOutlook JSON."
+    )
+    p_outlook.add_argument("pdf")
+    p_outlook.add_argument("out", nargs="?", default=None)
+    p_outlook.set_defaults(func=cmd_outlook)
 
     args = parser.parse_args(argv)
     return args.func(args)
