@@ -105,7 +105,7 @@ def cmd_eval(args: argparse.Namespace) -> int:
 def cmd_outlook_sample(args: argparse.Namespace) -> int:
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(wexford_sample().model_dump_json(indent=2))
+    out.write_text(wexford_sample().model_dump_json(indent=2) + "\n", encoding="utf-8")
     print(f"wrote {out}")
     return 0
 

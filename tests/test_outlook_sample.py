@@ -28,5 +28,13 @@ def test_outlook_sample_cli_writes_valid_json(tmp_path: Path):
     out = tmp_path / "sample.json"
     rc = main(["outlook-sample", str(out)])
     assert rc == 0
-    loaded = ReserveOutlook.model_validate_json(out.read_text())
+    loaded = ReserveOutlook.model_validate_json(out.read_text(encoding="utf-8"))
+    assert loaded == wexford_sample()
+
+
+def test_committed_fixture_is_utf8_and_matches_sample():
+    path = Path("fixtures/samples/reserve_outlook.sample.json")
+    raw = path.read_bytes()
+    raw.decode("utf-8")  # must be valid UTF-8 (raises UnicodeDecodeError otherwise)
+    loaded = ReserveOutlook.model_validate_json(raw.decode("utf-8"))
     assert loaded == wexford_sample()
