@@ -1,0 +1,157 @@
+{
+  "building": {
+    "name": "The Wexford",
+    "unit_label": "#304",
+    "depreciation_report_date": null,
+    "source_note": "deprec. report 2022 · 4y old"
+  },
+  "unit": {
+    "entitlement_numerator": 18,
+    "entitlement_denominator": 2719,
+    "strata_fee_monthly": 486.0,
+    "reserve_portion_monthly": 50.0
+  },
+  "assumptions": {
+    "interest_rate": 0.02,
+    "base_annual_contribution": 90000.0,
+    "history_start_year": 2020,
+    "projection_start_year": 2026,
+    "horizon_end_year": 2041,
+    "sourced": false
+  },
+  "start_balance": 420000.0,
+  "history": [
+    {
+      "year": 2020,
+      "balance": 260000.0
+    },
+    {
+      "year": 2021,
+      "balance": 300000.0
+    },
+    {
+      "year": 2022,
+      "balance": 215000.0
+    },
+    {
+      "year": 2023,
+      "balance": 285000.0
+    },
+    {
+      "year": 2024,
+      "balance": 360000.0
+    },
+    {
+      "year": 2025,
+      "balance": 415000.0
+    },
+    {
+      "year": 2026,
+      "balance": 420000.0
+    }
+  ],
+  "expenditures": [
+    {
+      "label": "Roof",
+      "amount": 180000.0,
+      "year": 2028,
+      "start_year": null,
+      "end_year": null,
+      "peak_year": null
+    },
+    {
+      "label": "Plumb",
+      "amount": 150000.0,
+      "year": 2030,
+      "start_year": null,
+      "end_year": null,
+      "peak_year": null
+    },
+    {
+      "label": "Elev",
+      "amount": 240000.0,
+      "year": 2035,
+      "start_year": null,
+      "end_year": null,
+      "peak_year": null
+    },
+    {
+      "label": "HVAC",
+      "amount": 200000.0,
+      "year": 2038,
+      "start_year": null,
+      "end_year": null,
+      "peak_year": null
+    },
+    {
+      "label": "Envelope",
+      "amount": 1100000.0,
+      "year": null,
+      "start_year": 2031,
+      "end_year": 2033,
+      "peak_year": 2032
+    }
+  ],
+  "planned_fee_changes": [
+    {
+      "effective_year": 2028,
+      "pct": 0.1,
+      "note": null
+    },
+    {
+      "effective_year": 2031,
+      "pct": 0.06,
+      "note": null
+    }
+  ],
+  "events": [
+    {
+      "year": 2028.0,
+      "row": 0,
+      "type": "work",
+      "label": "Roof 180k",
+      "cluster_items": null
+    },
+    {
+      "year": 2032.0,
+      "row": 0,
+      "type": "work",
+      "label": "Envelope 1.1M",
+      "cluster_items": null
+    },
+    {
+      "year": 2035.0,
+      "row": 0,
+      "type": "work",
+      "label": "Elev 240k",
+      "cluster_items": null
+    },
+    {
+      "year": 2027.75,
+      "row": 1,
+      "type": "fee",
+      "label": "+10% plan",
+      "cluster_items": null
+    },
+    {
+      "year": 2038.0,
+      "row": 1,
+      "type": "work",
+      "label": "HVAC 200k",
+      "cluster_items": null
+    },
+    {
+      "year": 2030.0,
+      "row": 1,
+      "type": "meeting",
+      "label": null,
+      "cluster_items": [
+        "Plumbing 150k",
+        "+6% planned",
+        "AGM 2030"
+      ]
+    }
+  ],
+  "degraded": false,
+  "degraded_reason": null
+}

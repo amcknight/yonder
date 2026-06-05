@@ -10,6 +10,7 @@ from pathlib import Path
 from yonder.eval.score import FieldResult, ResultType, score_extract, tally
 from yonder.extract.client import ClaudeClient
 from yonder.extract.strata import extract_strata
+from yonder.outlook.sample import wexford_sample
 
 _SYMBOL = {
     ResultType.MATCH: "OK ",
@@ -101,6 +102,14 @@ def cmd_eval(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_outlook_sample(args: argparse.Namespace) -> int:
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(wexford_sample().model_dump_json(indent=2))
+    print(f"wrote {out}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="yonder")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -112,6 +121,14 @@ def main(argv: list[str] | None = None) -> int:
     p_eval = sub.add_parser("eval", help="Score labeled PDFs in a folder.")
     p_eval.add_argument("folder")
     p_eval.set_defaults(func=cmd_eval)
+
+    p_sample = sub.add_parser(
+        "outlook-sample", help="Write the synthetic ReserveOutlook sample JSON."
+    )
+    p_sample.add_argument(
+        "out", nargs="?", default="fixtures/samples/reserve_outlook.sample.json"
+    )
+    p_sample.set_defaults(func=cmd_outlook_sample)
 
     args = parser.parse_args(argv)
     return args.func(args)
