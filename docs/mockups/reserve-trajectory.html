@@ -188,10 +188,12 @@
   }
 
   function fail(msg){ var v=document.getElementById('verdict'); if(v) v.textContent=msg; }
-  fetch('../../fixtures/samples/reserve_outlook.sample.json')
+  var _params = new URLSearchParams(location.search);
+  var _dataUrl = _params.get('data') || '../../fixtures/samples/reserve_outlook.sample.json';
+  fetch(_dataUrl)
     .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
     .then(init)
-    .catch(function(e){ fail('Could not load reserve_outlook.sample.json. Serve the repo root over http (python -m http.server) and open this page via http://localhost:8000/docs/mockups/reserve-trajectory.html  ['+e.message+']'); });
+    .catch(function(e){ fail('Could not load '+_dataUrl+'. Serve the repo root over http (python -m http.server) and open via http://localhost:8000/docs/mockups/reserve-trajectory.html  ['+e.message+']'); });
 })();
 </script>
 </body>
