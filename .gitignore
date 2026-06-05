@@ -17,3 +17,6 @@ build/
 .claude/settings.local.json
 .claude/projects/
 .claude/scheduled_tasks.lock
+
+# Visual brainstorm companion (mockups, not source)
+.superpowers/
