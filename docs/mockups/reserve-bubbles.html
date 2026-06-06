@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reserve bubbles — category colors</title>
+<style>
+  body{margin:0;background:#e2e8f0;color:#0f172a;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:22px 12px;display:flex;flex-direction:column;align-items:center}
+  .cap{color:#475569;font-size:.85rem;margin:0 0 14px;max-width:450px;text-align:center;line-height:1.4}
+  .phone{width:390px;max-width:100%;background:#0f172a;border-radius:34px;padding:14px 14px 22px;box-shadow:0 14px 44px rgba(0,0,0,.4);color:#e2e8f0;border:6px solid #1e293b}
+  .notch{height:15px;display:flex;justify-content:center;align-items:center;margin-bottom:4px}.notch div{width:90px;height:5px;border-radius:3px;background:#334155}
+  .head{display:flex;justify-content:space-between;align-items:baseline;margin:2px 4px 0}.bname{font-weight:600;font-size:1rem}.stale{font-size:.66rem;color:#f59e0b;text-align:right;max-width:130px}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;font-size:.64rem;color:#94a3b8;margin:8px 4px 2px}.legend span{display:inline-flex;align-items:center;gap:5px}
+  .swl{width:14px;height:0;border-top-width:3px;border-top-style:solid;display:inline-block}.swd{width:14px;height:0;border-top:2px dashed #f59e0b;display:inline-block}.sw{width:11px;height:11px;border-radius:50%;display:inline-block}
+  #verdict{margin:10px 4px 12px;font-size:.84rem;font-weight:600;line-height:1.35}
+  .lever{background:#1e293b;border-radius:12px;padding:13px 14px;margin:0 2px}
+  .leverhead{display:flex;justify-content:space-between;align-items:center;font-size:.8rem;color:#94a3b8;margin-bottom:9px}#pctLabel{color:#e2e8f0;font-weight:600}
+  input[type=range]{width:100%;accent-color:#22c55e;height:24px}
+  .reads{display:flex;justify-content:space-between;gap:10px;margin-top:13px;font-size:.72rem}.reads .k{color:#94a3b8;line-height:1.2}.reads .v{font-size:1.02rem;font-weight:700;margin-top:2px}
+</style></head><body>
+<p class="cap">Work bubbles colored by building system (dominant system per year). Tap a year to see the colored line-item list.</p>
+<div class="phone">
+  <div class="notch"><div></div></div>
+  <div class="head"><div class="bname">Spectrum 4</div><div class="stale">deprec. report 2022 · unit figures placeholder</div></div>
+  <div class="legend">
+    <span><i class="swl" style="border-color:#38bdf8"></i> actual</span>
+    <span><i class="swl" style="border-color:#22c55e"></i> projected</span>
+    <span><i class="swd"></i> if unfunded</span>
+  </div>
+  <div class="legend" id="catLegend"></div>
+  <svg id="chart" viewBox="0 0 360 300" style="width:100%;height:auto;display:block"></svg>
+  <div id="verdict"></div>
+  <div class="lever">
+    <div class="leverhead"><span>What if strata fees changed…</span><span id="pctLabel">+0%</span></div>
+    <input id="slider" type="range" min="-30" max="150" value="0" step="5">
+    <div class="reads">
+      <div><div class="k">Your fee/mo</div><div class="v" id="feeOut">$486</div></div>
+      <div><div class="k">to reserve</div><div class="v" id="resOut">$50</div></div>
+      <div><div class="k">Your levies</div><div class="v" id="levyOut">$0</div></div>
+    </div>
+  </div>
+</div>
+<p class="cap" style="margin-top:14px">Each bubble's fill color shows the dominant building system for that year's spend. Swatch dots in the expanded list identify each line item's system.</p>
+
+<script>
+(function(){
+  var EXP=[
+   ["Hot Water Tanks",489667,2022],["Expansion Tanks",213313,2022],["Reheat Tanks",34214,2022],["HVAC Parkade",4434,2022],
+   ["Balcony Membrane",489667,2023],["Conc Eyebrow Membrane",110730,2023],
+   ["Sealant",92232,2024],["Paint Coating",127908,2024],["Heat Exchanger",82950,2024],
+   ["Lobby",34214,2025],["Hallways/Common",146761,2025],["HVAC Building",101975,2025],
+   ["Misc Mechanical",146761,2027],["Water Pumps",196000,2027],
+   ["Garbage Compactor",11528,2032],["Playground",16552,2032],
+   ["Sliding Doors",207433,2037],["Balcony Swing Doors",260167,2037],["Front Entrance",23096,2037],["Low-Slope Roof",92920,2037],["Below-Grade Membrane",309394,2037],["Garden Waterproofing",132380,2037],["Balcony Guardrails",316400,2037],["Roof Decks",213313,2037],["Elevator Modernization",196000,2037],["Elevator Cab",26262,2037],["Domestic Water Pipes",1006460,2037],["Sprinkler/Fire",15541,2037],["Cooling Tower",64665,2037],["Service Distribution",20201,2037],["Mailboxes",62072,2037],["Outdoor Lighting",12626,2037],["Site Handrails",64665,2037],["Water Feature",101975,2037],
+   ["Emergency Generator",127099,2042],
+   ["Entry Doors",20125,2047],["Service Doors",30958,2047],["Power Distribution",8175,2047],["Softscaping",44337,2047],["Hardscaping",38662,2047],["Drainage",22120,2047],
+   ["Conc Balcony Slabs",57227,2057],["Ext Walls Concrete",18520,2057],["Ext Walls Metal Panel",431589,2057],["Window-wall",363955,2057],["Interior Doors",82950,2057],["Gas Pipes",5184,2057]
+  ];
+  // Mirror of src/yonder/outlook/categories.py — keep in sync.
+  var SYS={ENV:'Envelope',MECH:'Mechanical',PLUMB:'Plumbing & Fire',ELEC:'Electrical & Vertical',AMEN:'Amenities & Site'};
+  var SYS_ORDER=[SYS.ENV,SYS.MECH,SYS.PLUMB,SYS.ELEC,SYS.AMEN];
+  var SYS_COLOR={};
+  SYS_COLOR[SYS.ENV]='#a78bfa';   // violet
+  SYS_COLOR[SYS.MECH]='#fb923c';  // orange (not amber)
+  SYS_COLOR[SYS.PLUMB]='#f472b6'; // rose/magenta
+  SYS_COLOR[SYS.ELEC]='#2dd4bf';  // teal (not cyan)
+  SYS_COLOR[SYS.AMEN]='#94a3b8';  // slate-gray (misc)
+  var SYS_KW={};
+  SYS_KW[SYS.ENV]=['roof','wall','window','membrane','sealant','guardrail','balcony','doors','paint','coating','waterproof','deck','entrance','slab','metal panel','eyebrow'];
+  SYS_KW[SYS.MECH]=['hvac','boiler','hot water','tank','cooling','heat exchanger','pump','mechanical','ventilation'];
+  SYS_KW[SYS.PLUMB]=['pipe','sprinkler','fire','drainage','sump','sewer','plumbing','gas'];
+  SYS_KW[SYS.ELEC]=['elevator','lift','generator','power','lighting','electrical','distribution'];
+  SYS_KW[SYS.AMEN]=['lobby','hallway','common','playground','mailbox','landscap','softscap','hardscap','garden','site','signage','compactor','garbage','amenity','feature','pool','gym','fitness'];
+  function categorize(label){
+    var t=String(label).toLowerCase();
+    for(var i=0;i<SYS_ORDER.length;i++){ var s=SYS_ORDER[i];
+      for(var j=0;j<SYS_KW[s].length;j++){ if(t.indexOf(SYS_KW[s][j])>=0) return s; } }
+    return SYS.AMEN;
+  }
+  // Per-year {system: dollars}, then the dominant system for that year.
+  function yearSystems(y){ var m={}; (MAP[y]||[]).forEach(function(it){ var s=categorize(it.label); m[s]=(m[s]||0)+it.amt; }); return m; }
+  function dominantSystem(y){ var m=yearSystems(y), best=SYS.AMEN, bv=-1;
+    SYS_ORDER.forEach(function(s){ if((m[s]||0)>bv){ bv=m[s]||0; best=s; } }); return best; }
+  // SVG arc path for a donut wedge from angle a0..a1 (radians), inner ri..outer ro.
+  function wedgePath(cx,cy,ri,ro,a0,a1){
+    function P(r,a){ return [cx+r*Math.cos(a), cy+r*Math.sin(a)]; }
+    var large=(a1-a0)>Math.PI?1:0;
+    var o0=P(ro,a0), o1=P(ro,a1), i1=P(ri,a1), i0=P(ri,a0);
+    return 'M'+o0[0]+' '+o0[1]+' A'+ro+' '+ro+' 0 '+large+' 1 '+o1[0]+' '+o1[1]+
+           ' L'+i1[0]+' '+i1[1]+' A'+ri+' '+ri+' 0 '+large+' 0 '+i0[0]+' '+i0[1]+' Z';
+  }
+  // Top systems for a year as [{s,amt}] sorted desc, capped to top 3 (rest folded into the 3rd).
+  function topSystems(y){
+    var m=yearSystems(y);
+    var arr=SYS_ORDER.filter(function(s){return m[s];}).map(function(s){return {s:s,amt:m[s]};});
+    arr.sort(function(a,b){return b.amt-a.amt;});
+    if(arr.length<=3) return arr;
+    var head=arr.slice(0,2), tail=arr.slice(2);
+    head.push({s:tail[0].s, amt:tail.reduce(function(t,x){return t+x.amt;},0)});
+    return head;
+  }
+
+  var startBal=913683, baseAnnual=291086, interest=0.018, unitShare=18/2719, baseFee=486, resBase=50;
+  var DATA_START=2021, NOW=2026, Y1=2057;
+  var NS='http://www.w3.org/2000/svg', D=String.fromCharCode(36);
+  var X0=46, X1=350, T=22, B=196;
+
+  var MAP={}; EXP.forEach(function(e){ (MAP[e[2]]=MAP[e[2]]||[]).push({label:e[0],amt:e[1]}); });
+  var BYEAR=Object.keys(MAP).map(Number).sort(function(a,b){return a-b;});
+  function yearTotal(y){ return (MAP[y]||[]).reduce(function(s,i){return s+i.amt;},0); }
+  var maxBucket=Math.max.apply(null,BYEAR.map(yearTotal));
+
+  function el(t,a,x){var e=document.createElementNS(NS,t);for(var k in a)e.setAttribute(k,a[k]);if(x!=null)e.textContent=x;return e;}
+  function mapX(y){return X0+(y-DATA_START)*(X1-X0)/(Y1-DATA_START);}
+  function money(v){var s=Math.abs(v);var t=s>=1e6?(D+(s/1e6).toFixed(s>=1e7?0:1)+'M'):s>=1e3?(D+Math.round(s/1000)+'k'):(D+Math.round(s));return (v<0?'-':'')+t;}
+  function niceStep(raw){ if(raw<=0)return 1; var m=Math.pow(10,Math.floor(Math.log10(raw))); var f=raw/m; var nf=f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10; return nf*m; }
+  function radius(y){ return 4.5+11.5*Math.sqrt(yearTotal(y)/maxBucket); }
+  function maxR(){ return Math.max.apply(null,BYEAR.map(radius)); }
+
+  function sim(incr){
+    var wl=startBal, ul=startBal, wlA=[{y:DATA_START,b:wl}], ulA=[{y:DATA_START,b:ul}], levies=[];
+    for(var y=DATA_START+1;y<=Y1;y++){
+      var future=y>NOW, c=baseAnnual*(future?(1+incr):1), e=yearTotal(y);
+      ul=ul*(1+interest)+c-e;
+      var pre=wl*(1+interest)+c-e;
+      if(pre<0){ if(future) levies.push({y:y,amt:-pre}); wl=0; } else wl=pre;
+      wlA.push({y:y,b:wl}); ulA.push({y:y,b:ul});
+    }
+    return {wlA:wlA,ulA:ulA,levies:levies,totUnit:levies.reduce(function(s,L){return s+L.amt*unitShare;},0)};
+  }
+
+  var svg=document.getElementById('chart'), openY=null, cur=0;
+
+  function draw(incr){
+    cur=incr; svg.innerHTML='';
+    var s=sim(incr);
+    var vals=[0]; s.wlA.concat(s.ulA).forEach(function(p){vals.push(p.b);});
+    var dataHi=Math.max.apply(null,vals), dataLo=Math.min.apply(null,vals);
+    var stp=niceStep((dataHi-dataLo)/4);
+    var hi=Math.ceil(dataHi/stp)*stp, lo=Math.floor(dataLo/stp)*stp;
+    if(hi===lo) hi=lo+stp;
+    function mapY(v){return T+(hi-v)*(B-T)/(hi-lo);}
+    var hasNeg = lo < -0.5;
+    for(var g=lo; g<=hi+stp*0.01; g+=stp){ var gy=mapY(g), z=Math.abs(g)<stp*0.01;
+      svg.appendChild(el('line',{x1:X0,y1:gy,x2:X1,y2:gy,stroke:z?(hasNeg?'#94a3b8':'#64748b'):'#334155','stroke-width':z&&hasNeg?1.6:1,'stroke-dasharray':z?'':'2 4',opacity:z?1:0.9}));
+      svg.appendChild(el('text',{x:X0-6,y:gy+3,'text-anchor':'end','font-size':9.5,fill:z?'#cbd5e1':'#64748b'},money(g))); }
+    [DATA_START,2030,2037,2047,2057].forEach(function(yr){ svg.appendChild(el('text',{x:mapX(yr),y:12,'text-anchor':'middle','font-size':9.5,fill:'#475569'},String(yr))); });
+    var nx=mapX(NOW);
+    svg.appendChild(el('line',{x1:nx,y1:T,x2:nx,y2:B,stroke:'#e2e8f0','stroke-dasharray':'2 3','stroke-width':1,opacity:0.45}));
+    svg.appendChild(el('text',{x:nx,y:T-12,'text-anchor':'middle','font-size':9,fill:'#e2e8f0',opacity:0.8},'now'));
+
+    var ghostF=s.ulA.filter(function(p){return p.y>=NOW;});
+    svg.appendChild(el('polyline',{points:ghostF.map(function(p){return mapX(p.y)+','+mapY(p.b);}).join(' '),fill:'none',stroke:'#f59e0b','stroke-width':1.5,'stroke-dasharray':'4 3',opacity:0.6}));
+    var past=s.wlA.filter(function(p){return p.y<=NOW;}), fut=s.wlA.filter(function(p){return p.y>=NOW;});
+    svg.appendChild(el('polyline',{points:past.map(function(p){return mapX(p.y)+','+mapY(p.b);}).join(' '),fill:'none',stroke:'#38bdf8','stroke-width':2.4,'stroke-linejoin':'round'}));
+    svg.appendChild(el('polyline',{points:fut.map(function(p){return mapX(p.y)+','+mapY(p.b);}).join(' '),fill:'none',stroke:'#22c55e','stroke-width':2.6,'stroke-linejoin':'round'}));
+
+    var laneY=B+30;
+    BYEAR.forEach(function(y){ var r=radius(y), x=mapX(y), isPast=y<NOW;
+      svg.appendChild(el('line',{x1:x,y1:B+4,x2:x,y2:laneY-r,stroke:'#475569','stroke-width':1,opacity:0.35}));
+      var g=el('g',{onclick:'__pick('+y+')',style:'cursor:pointer'});
+      var dom=dominantSystem(y), dc=SYS_COLOR[dom];
+      g.appendChild(el('circle',{cx:x,cy:laneY,r:r,fill:isPast?'none':dc,opacity:openY===y?0.95:(isPast?0.9:0.55),stroke:openY===y?'#e2e8f0':(isPast?dc:'none'),'stroke-width':isPast?1.3:1.5,'stroke-dasharray':isPast?'2 2':''}));
+      var tops=topSystems(y), tot=tops.reduce(function(t,x){return t+x.amt;},0);
+      var mixed = tops.length>=2 && (tops[0].amt/tot) < 0.75;
+      if(!isPast && r>=9 && mixed){
+        var a=-Math.PI/2;  // start at 12 o'clock
+        tops.forEach(function(p){
+          var a1=a+2*Math.PI*(p.amt/tot);
+          g.appendChild(el('path',{d:wedgePath(x,laneY,r*0.5,r,a,a1),fill:SYS_COLOR[p.s],opacity:openY===y?0.95:0.85,stroke:'#0f172a','stroke-width':0.5}));
+          a=a1;
+        });
+      }
+      g.appendChild(el('text',{x:x,y:laneY+3.5,'text-anchor':'middle','font-size':9.5,fill:isPast?'#94a3b8':'#e2e8f0'},String(MAP[y].length)));
+      svg.appendChild(g);
+    });
+    var labelW=44, rowEnd=[];
+    BYEAR.filter(function(y){return openY!==y;}).forEach(function(y){
+      var x=mapX(y), left=x-labelW/2, r=0;
+      while(rowEnd[r]!=null && rowEnd[r]>left) r++;
+      rowEnd[r]=x+labelW/2;
+      var ly=laneY+radius(y)+11+r*11;
+      if(r>0) svg.appendChild(el('line',{x1:x,y1:laneY+radius(y),x2:x,y2:ly-7,stroke:'#475569','stroke-width':0.75,opacity:0.45}));
+      svg.appendChild(el('text',{x:x,y:ly,'text-anchor':'middle','font-size':8.5,fill:y<NOW?'#94a3b8':'#cbd5e1'},"’"+String(y).slice(2)+" "+money(yearTotal(y))));
+    });
+    var labelRows=rowEnd.length||1;
+    var contentBottom = laneY + maxR() + 11 + labelRows*11 + 4;
+
+    if(openY!=null){
+      var items=MAP[openY].slice().sort(function(a,b){return b.amt-a.amt;});
+      var shown=items.slice(0,8), more=items.length-shown.length, lh=12.5;
+      var bw=158, bx=Math.max(X0, Math.min(mapX(openY)-bw/2, X1-bw));
+      var by=laneY+maxR()+12+labelRows*11;
+      var bh=16+shown.length*lh+(more>0?lh:0);
+      svg.appendChild(el('rect',{x:bx,y:by,width:bw,height:bh,rx:5,fill:'#1e293b',stroke:'#475569'}));
+      svg.appendChild(el('text',{x:bx+8,y:by+12,'font-size':8.5,fill:'#a5b4fc'},openY+(openY<NOW?' (past)':'')+" — "+money(yearTotal(openY))+" ("+items.length+")"));
+      shown.forEach(function(it,i){
+        var sc=SYS_COLOR[categorize(it.label)];
+        svg.appendChild(el('circle',{cx:bx+11,cy:by+25+i*lh-3,r:3,fill:sc}));
+        svg.appendChild(el('text',{x:bx+18,y:by+25+i*lh,'font-size':8.5,fill:'#cbd5e1'},it.label));
+        svg.appendChild(el('text',{x:bx+bw-8,y:by+25+i*lh,'text-anchor':'end','font-size':8.5,fill:'#94a3b8'},money(it.amt)));
+      });
+      if(more>0) svg.appendChild(el('text',{x:bx+8,y:by+25+shown.length*lh,'font-size':8,fill:'#64748b'},"+"+more+" more (tap to close)"));
+      contentBottom = by + bh + 6;
+    }
+    // shrink-to-content: kill the dead gap, grow only when expanded
+    svg.setAttribute('viewBox','0 0 360 '+Math.ceil(contentBottom));
+
+    document.getElementById('pctLabel').textContent=(incr>=0?'+':'')+Math.round(incr*100)+'%';
+    var fee=Math.round(baseFee+resBase*incr);
+    var fo=document.getElementById('feeOut'); fo.textContent=D+fee; fo.style.color=incr!==0?'#fbbf24':'#e2e8f0';
+    document.getElementById('resOut').textContent=D+Math.round(resBase*(1+incr));
+    var le=document.getElementById('levyOut'), v=document.getElementById('verdict');
+    if(s.levies.length===0){ le.textContent=D+'0'; le.style.color='#22c55e';
+      v.innerHTML='<span style="color:#22c55e">&#10003; Stays funded</span> — projected peak '+money(Math.max.apply(null,fut.map(function(p){return p.b;})))+', survives the 2037 wave ('+money(yearTotal(2037))+').'; }
+    else { le.textContent='~'+D+Math.round(s.totUnit).toLocaleString(); le.style.color='#ef4444';
+      v.innerHTML='<span style="color:#f59e0b">'+s.levies.length+' levy year(s)</span> — first '+s.levies[0].y+'. ~'+D+Math.round(s.totUnit).toLocaleString()+' on your unit at current fees.'; }
+  }
+  window.__pick=function(y){ openY = openY===y?null:y; draw(cur); };
+  document.getElementById('slider').addEventListener('input',function(){ draw(this.value/100); });
+  (function buildCatLegend(){
+    var present={}; BYEAR.forEach(function(y){ Object.keys(yearSystems(y)).forEach(function(s){ present[s]=true; }); });
+    var box=document.getElementById('catLegend');
+    SYS_ORDER.forEach(function(s){ if(!present[s]) return;
+      var span=document.createElement('span');
+      span.innerHTML='<i class="sw" style="background:'+SYS_COLOR[s]+'"></i> '+s;
+      box.appendChild(span);
+    });
+  })();
+  draw(0);
+})();
+</script>
+</body></html>
