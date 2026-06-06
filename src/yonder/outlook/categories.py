@@ -23,7 +23,7 @@ SYSTEMS = [ENVELOPE, MECHANICAL, PLUMBING_FIRE, ELECTRICAL_VERTICAL, AMENITIES_S
 _KEYWORDS: dict[str, tuple[str, ...]] = {
     ENVELOPE: (
         "roof", "wall", "window", "membrane", "sealant", "guardrail",
-        "balcony", "door", "paint", "coating", "waterproof", "deck",
+        "balcony", "doors", " door", "paint", "coating", "waterproof", "deck",
         "entrance", "slab", "panel", "eyebrow",
     ),
     MECHANICAL: (
