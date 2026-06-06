@@ -47,12 +47,19 @@ Exact hex values are tuned during implementation against the dark slate
 background (`#0f172a`); the user will sanity-check how they feel on real data.
 Slate-gray intentionally reads as "misc / cosmetic" — the de-emphasized bucket.
 
-### 2. Bubble = dominant category
+### 2. Marker color — dominant, optionally a donut
 
-For each year:
-1. Bucket that year's items into the ~5 systems.
-2. **Sum dollars per system** (not per line item).
-3. Fill the bubble with the color of the largest-dollar system.
+For each year, bucket that year's items into the ~5 systems and **sum dollars
+per system** (not per line item). Then color the marker:
+
+- **Baseline (solid dominant):** fill the bubble with the largest-dollar
+  system's color.
+- **Optional (multicolor donut):** for years whose spend genuinely spans
+  multiple systems, render the marker as a donut split into 2–3 wedges by
+  dollar share. Only the **big** years (e.g. 2037) have the pixels to carry
+  this on a phone; **small** years fall back to the solid dominant fill. This
+  was first cut as YAGNI but is back **in scope for the preview** to evaluate —
+  the user will judge whether the blend read is worth the busier marker.
 
 Radius still encodes total spend; the count badge stays. So a year reads as
 *when · how big · what flavor* with no interaction.
@@ -62,10 +69,11 @@ Water Pipes" is one $1M line, but envelope (membranes + walls + guardrails +
 roof + doors) summed is larger — so 2037 should read as **envelope**, not
 plumbing.
 
-### 3. Expanded list = swatch dots
+### 3. Expanded list = swatch dots (priority)
 
-The tap-to-open per-year box lists each line item. Each item gets a small
-colored dot to its left matching its system:
+This is the **must-have** of the feature. The tap-to-open per-year box lists
+each line item; each item gets a small colored dot to its left matching its
+system:
 
 ```
 ● Domestic Water Pipes            $1.0M
@@ -82,35 +90,41 @@ A second small legend row beneath the existing line legend maps the 5 colors →
 system names. Required because swatch dots are not self-explanatory. Keep it
 compact (single wrapping row, small type) to respect phone width.
 
-### 5. Data seam
+### 5. The classifier (now) + data seam (deferred)
 
-Add an optional field to `Expenditure` ([src/yonder/outlook/model.py](../../../src/yonder/outlook/model.py)):
+The label → system mapping is the durable, fussable core ("is a water feature an
+amenity or plumbing?"), so it is built **now** in tested Python:
 
 ```python
-category: str | None = None   # one of the ~5 system buckets; None -> classifier fallback
+def categorize(label: str) -> str   # -> one of the ~5 system bucket names
 ```
 
-The renderer uses `category` when present, otherwise falls back to the keyword
-classifier. So:
+backed by an ordered keyword table. The preview sketch mirrors the *same* small
+keyword table in JS (the only duplicated bit; small and stable).
 
-- **Today:** mockups carry no `category`; the renderer classifies by label. Works
-  immediately.
-- **Later:** the extractor can populate `category` directly with no renderer
-  change.
+**Deferred to the "make it real" round** (after the user likes the colors): an
+optional `category: str | None = None` field on `Expenditure`
+([src/yonder/outlook/model.py](../../../src/yonder/outlook/model.py)), so the
+renderer can prefer an extractor-supplied category and fall back to `categorize`.
+Not built in this round.
 
-The keyword classifier is the single source of truth for label → system mapping
-and is shared by both the renderer fallback and (eventually) any
-extractor-side defaulting.
+## Two-round delivery
+
+- **Round 1 — quick color preview (this plan):** Python `categorize` classifier
+  (TDD) + a visual preview that colors the bubble sketch on real Spectrum 4 data:
+  dominant/donut markers, swatch-dot expanded list, category legend. Goal: let
+  the user see how the colors feel without touching the hardened chart.
+- **Round 2 — make it real (later, separate plan):** fold the per-year-bubble +
+  coloring into the canonical JSON-driven chart, add the `category` schema field
+  + extractor wiring. Only after Round 1 colors are approved.
 
 ## Explicitly out of scope (YAGNI)
 
-- **Rim-arcs / donut bubbles** showing the full category blend on the bubble —
-  die at small phone sizes. Revisit only if dominant-color-only feels too lossy
-  on real data.
 - **Icons / glyphs** per system — more design work than swatch dots; the dot +
   legend covers the need.
 - **Swimlanes** and **stacked bars** — both discard the radius = magnitude read,
   which is the chart's strongest feature, and cost vertical space on a phone.
+- **Schema `category` field + extractor wiring** — deferred to Round 2 (above).
 
 ## Open questions (defer to implementation / review)
 
