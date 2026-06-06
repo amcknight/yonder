@@ -1,3 +1,5 @@
+import pytest
+
 from yonder.outlook.categories import (
     SYSTEMS,
     categorize,
@@ -35,7 +37,9 @@ def test_match_is_case_insensitive():
     assert categorize("low-slope ROOF") == ENVELOPE
 
 
-import pytest
+def test_electrical_panel_label_is_not_envelope():
+    assert categorize("Electrical Panel Replacement") == ELECTRICAL_VERTICAL
+
 
 # (label, expected system) for the real Spectrum 4 depreciation-report items.
 SPECTRUM4_CASES = [
