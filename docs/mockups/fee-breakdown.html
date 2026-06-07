@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fee Breakdown v1 — sorted bars, reserve pinned</title>
+<style>
+  body{margin:0;background:#e2e8f0;color:#0f172a;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:24px 12px;display:flex;flex-direction:column;align-items:center}
+  .cap{color:#475569;font-size:.85rem;margin:0 0 14px;max-width:430px;text-align:center;line-height:1.4}
+  .phone{width:390px;max-width:100%;background:#0f172a;border-radius:34px;padding:14px 14px 22px;box-shadow:0 14px 44px rgba(0,0,0,.4);color:#e2e8f0;border:6px solid #1e293b}
+  .notch{height:16px;display:flex;justify-content:center;align-items:center;margin-bottom:4px}
+  .notch div{width:90px;height:5px;border-radius:3px;background:#334155}
+  .head{display:flex;justify-content:space-between;align-items:baseline;margin:2px 4px 8px}
+  .bname{font-weight:600;font-size:1rem}
+  .stale{font-size:.66rem;color:#94a3b8;text-align:right;max-width:140px}
+  svg a{cursor:pointer}
+</style>
+</head>
+<body>
+  <p class="cap">v1 single-year breakdown: spend categories sorted by size, each bar scaled to <b>your</b> monthly share; the building annual sits inside the bar. <b>Reserve</b> is pinned on top and taps through to the Reserve Trajectory view. Tap a multi-line category to expand its line items.</p>
+  <div class="phone">
+    <div class="notch"><div></div></div>
+    <div class="head">
+      <div class="bname">&mdash;</div>
+      <div class="stale"></div>
+    </div>
+    <svg id="chart" viewBox="0 0 340 400" style="width:100%;height:auto;display:block"></svg>
+  </div>
+  <p class="cap" style="margin-top:14px">Trend ornaments (delta caps, +/- diffs, sparklines, total-fee trend) appear only with multi-year data &mdash; deferred to v1.1.</p>
+
+<script>
+(function(){
+  var NS='http://www.w3.org/2000/svg', D=String.fromCharCode(36);
+  // distinct bar colours, cycled by sort order
+  var COLORS=['#3b82f6','#f97316','#ef4444','#eab308','#14b8a6','#a855f7','#0ea5e9','#ec4899'];
+
+  function money(v){
+    if(v==null) return '';
+    var a=Math.abs(v);
+    if(a>=1e6) return D+(v/1e6).toFixed(1)+'M';
+    if(a>=1000) return D+Math.round(v/1000)+'k';
+    return D+Math.round(v);
+  }
+  function el(tag,at,txt){var e=document.createElementNS(NS,tag);for(var k in at)e.setAttribute(k,at[k]);if(txt!=null)e.textContent=txt;return e;}
+
+  var DATA=null, expanded={};
+  function toggle(i){ expanded[i]=!expanded[i]; render(DATA); }
+
+  function render(fb){
+    var b=fb.building||{}, u=fb.unit||{}, svg=document.getElementById('chart');
+    document.querySelector('.bname').textContent=(b.name||'—')+(b.unit_label?(' · '+b.unit_label):'');
+    document.querySelector('.stale').textContent=b.source_note||'';
+    svg.innerHTML='';
+
+    var W=340, BARMAX=247, y=6;
+
+    // hard-degrade: no bars to draw
+    if(fb.degraded && (!fb.categories||!fb.categories.length) && !fb.reserve){
+      svg.setAttribute('viewBox','0 0 340 90');
+      svg.appendChild(el('text',{x:W/2,y:50,'text-anchor':'middle','font-size':11,fill:'#f59e0b'},
+        '⚠ '+(fb.degraded_reason||'breakdown unavailable')));
+      return;
+    }
+
+    // ---- total-fee header ----
+    var series=fb.total_fee_series||[], latest=series.length?series[series.length-1]:null;
+    var headNum = latest?latest.monthly_fee:(u.total_fee_monthly!=null?u.total_fee_monthly:null);
+    svg.appendChild(el('rect',{x:6,y:y,width:328,height:54,rx:6,fill:'#11161f'}));
+    svg.appendChild(el('text',{x:16,y:y+18,'font-size':9,'font-weight':600,fill:'#9aa0a6'},'TOTAL FEE / MONTH'));
+    svg.appendChild(el('text',{x:16,y:y+41,'font-size':20,'font-weight':700,fill:'#fff'}, headNum!=null?money(headNum):'—'));
+    if(series.length>=2){  // v1.1 trend layer: only with multiple years
+      var first=series[0], delta=latest.monthly_fee-first.monthly_fee, span=latest.year-first.year;
+      svg.appendChild(el('text',{x:88,y:y+41,'font-size':8.5,'font-weight':600,fill:'#8b93a0'},
+        (delta>=0?'↗ +':'↘ -')+D+Math.abs(Math.round(delta))+'/mo over '+span+' yrs'));
+      var lo=Math.min.apply(null,series.map(function(p){return p.monthly_fee;}));
+      var hi=Math.max.apply(null,series.map(function(p){return p.monthly_fee;}));
+      var rng=(hi-lo)||1;
+      var pts=series.map(function(p,i){
+        var px=210+i*(120/(series.length-1));
+        var py=(y+48)-((p.monthly_fee-lo)/rng)*22;
+        return px+','+py;
+      });
+      svg.appendChild(el('polyline',{points:pts.join(' '),fill:'none',stroke:'#fff','stroke-width':1.5}));
+    }
+    y+=62;
+
+    // largest building_annual sets the bar scale (reserve included, for one shared scale)
+    var maxAnnual=0;
+    function consider(c){ if(c && (c.building_annual||0)>maxAnnual) maxAnnual=c.building_annual||0; }
+    (fb.categories||[]).forEach(consider); consider(fb.reserve);
+    function barW(c){ return maxAnnual ? Math.max(16,(c.building_annual||0)/maxAnnual*BARMAX) : 80; }
+
+    // in-bar total if wide enough, else grey total just after the bar
+    function drawTotal(g,c,w,barY){
+      if(c.building_annual==null) return;
+      if(w>=44) g.appendChild(el('text',{x:14,y:barY+10,'font-size':8.5,'font-weight':700,fill:'#fff'},money(c.building_annual)));
+      else g.appendChild(el('text',{x:w+14,y:barY+10,'font-size':8.5,'font-weight':600,fill:'#7c8493'},money(c.building_annual)));
+    }
+
+    // ---- pinned reserve ----
+    if(fb.reserve){
+      var r=fb.reserve, rw=barW(r);
+      svg.appendChild(el('rect',{x:6,y:y,width:328,height:40,rx:6,fill:'#0e1a17',stroke:'#15463c'}));
+      svg.appendChild(el('text',{x:10,y:y+16,'font-size':10.5,'font-weight':600,fill:'#5eead4'},'Reserve contribution'));
+      if(r.personal_monthly!=null)
+        svg.appendChild(el('text',{x:332,y:y+16,'font-size':11,'font-weight':700,fill:'#fff','text-anchor':'end'},money(r.personal_monthly)+'/mo'));
+      svg.appendChild(el('rect',{x:10,y:y+22,width:rw,height:13,rx:2,fill:'#22c55e'}));
+      if(r.building_annual!=null)
+        svg.appendChild(el('text',{x:16,y:y+32,'font-size':8.5,'font-weight':700,fill:'#fff'},money(r.building_annual)));
+      var link=el('a',{href:'reserve-trajectory.html'});
+      link.appendChild(el('text',{x:Math.min(rw+22,236),y:y+32,'font-size':8,'font-weight':600,fill:'#5eead4'},'tap → reserve trajectory ↗'));
+      svg.appendChild(link);
+      y+=48;
+    }
+
+    // section divider
+    svg.appendChild(el('line',{x1:6,y1:y,x2:334,y2:y,stroke:'#1f2937'}));
+    svg.appendChild(el('text',{x:8,y:y-4,'font-size':7.5,'font-weight':600,fill:'#5b6573'},'SAVED ↑'));
+    svg.appendChild(el('text',{x:8,y:y+14,'font-size':7.5,'font-weight':600,fill:'#5b6573'},'SPENT ↓'));
+    y+=22;
+
+    // ---- spend rows (sorted desc by the contract) ----
+    (fb.categories||[]).forEach(function(c,i){
+      var color=COLORS[i%COLORS.length], w=barW(c), labelY=y+16, barY=y+22;
+      svg.appendChild(el('text',{x:10,y:labelY,'font-size':10.5,'font-weight':600,fill:'#e8eaed'},c.category));
+      if(c.personal_monthly!=null)
+        svg.appendChild(el('text',{x:332,y:labelY,'font-size':11,'font-weight':700,fill:'#fff','text-anchor':'end'},money(c.personal_monthly)+'/mo'));
+      // v1.1: a grey personal-dollar diff would render at x~284 when prior_year_annual is set.
+
+      var multi=(c.line_items&&c.line_items.length>1);
+      var g=el('g', multi?{style:'cursor:pointer'}:{});
+      g.appendChild(el('rect',{x:10,y:barY,width:w,height:14,rx:2,fill:color}));
+      drawTotal(g,c,w,barY);
+      if(multi){
+        g.appendChild(el('text',{x:332,y:barY+11,'font-size':8,fill:'#7c8493','text-anchor':'end'},expanded[i]?'▲':'▼'));
+        (function(idx){ g.addEventListener('click',function(){ toggle(idx); }); })(i);
+      }
+      svg.appendChild(g);
+      y+=38;
+
+      if(multi && expanded[i]){
+        c.line_items.forEach(function(it){
+          svg.appendChild(el('text',{x:20,y:y,'font-size':8.5,fill:'#8b93a0'},
+            '• '+it.label+(it.annual_amount!=null?('   '+money(it.annual_amount)):'')));
+          y+=13;
+        });
+        y+=4;
+      }
+    });
+
+    svg.setAttribute('viewBox','0 0 340 '+(y+8));
+  }
+
+  function fail(msg){
+    var svg=document.getElementById('chart'); svg.innerHTML='';
+    svg.appendChild(el('text',{x:8,y:24,'font-size':9,fill:'#f59e0b'},msg));
+  }
+  var _params=new URLSearchParams(location.search);
+  var _dataUrl=_params.get('data')||'../../fixtures/samples/fee_breakdown.sample.json';
+  fetch(_dataUrl)
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(fb){ DATA=fb; render(fb); })
+    .catch(function(e){ fail('Could not load '+_dataUrl+'. Serve the repo root over http (python -m http.server) and open http://localhost:8000/docs/mockups/fee-breakdown.html  ['+e.message+']'); });
+})();
+</script>
+</body>
+</html>
