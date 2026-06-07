@@ -139,6 +139,7 @@
       y+=38;
 
       if(multi && expanded[i]){
+        y+=6;  // clearance below the bar before the first line item
         c.line_items.forEach(function(it){
           svg.appendChild(el('text',{x:20,y:y,'font-size':8.5,fill:'#8b93a0'},
             '• '+it.label+(it.annual_amount!=null?('   '+money(it.annual_amount)):'')));
