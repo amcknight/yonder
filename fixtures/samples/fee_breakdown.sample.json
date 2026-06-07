@@ -1,0 +1,128 @@
+{
+  "building": {
+    "name": "The Wexford",
+    "unit_label": "#1802",
+    "fiscal_year": 2024,
+    "source_note": "AGM budget FY2024 · synthetic"
+  },
+  "unit": {
+    "lot_id": "1802",
+    "entitlement": 82,
+    "operating_fee_monthly": 521.0,
+    "reserve_fee_monthly": 78.0,
+    "total_fee_monthly": 599.0
+  },
+  "reserve": {
+    "category": "Reserve contribution",
+    "building_annual": 139000.0,
+    "personal_monthly": 78.0,
+    "prior_year_annual": null,
+    "line_items": []
+  },
+  "categories": [
+    {
+      "category": "Utilities",
+      "building_annual": 350000.0,
+      "personal_monthly": 196.0,
+      "prior_year_annual": null,
+      "line_items": [
+        {
+          "label": "Water & sewer",
+          "annual_amount": 150000.0
+        },
+        {
+          "label": "Heat",
+          "annual_amount": 90000.0
+        },
+        {
+          "label": "Electricity",
+          "annual_amount": 60000.0
+        },
+        {
+          "label": "Gas",
+          "annual_amount": 30000.0
+        },
+        {
+          "label": "Garbage",
+          "annual_amount": 20000.0
+        }
+      ]
+    },
+    {
+      "category": "Repairs & maintenance",
+      "building_annual": 211000.0,
+      "personal_monthly": 118.0,
+      "prior_year_annual": null,
+      "line_items": [
+        {
+          "label": "General repairs",
+          "annual_amount": 130000.0
+        },
+        {
+          "label": "Landscaping",
+          "annual_amount": 81000.0
+        }
+      ]
+    },
+    {
+      "category": "Insurance",
+      "building_annual": 182000.0,
+      "personal_monthly": 102.0,
+      "prior_year_annual": null,
+      "line_items": [
+        {
+          "label": "Insurance premium",
+          "annual_amount": 182000.0
+        }
+      ]
+    },
+    {
+      "category": "Security & life-safety",
+      "building_annual": 119000.0,
+      "personal_monthly": 67.0,
+      "prior_year_annual": null,
+      "line_items": [
+        {
+          "label": "Concierge",
+          "annual_amount": 80000.0
+        },
+        {
+          "label": "Fire monitoring",
+          "annual_amount": 39000.0
+        }
+      ]
+    },
+    {
+      "category": "Building services",
+      "building_annual": 43000.0,
+      "personal_monthly": 24.0,
+      "prior_year_annual": null,
+      "line_items": [
+        {
+          "label": "Elevator maintenance",
+          "annual_amount": 43000.0
+        }
+      ]
+    },
+    {
+      "category": "Administration",
+      "building_annual": 25000.0,
+      "personal_monthly": 14.0,
+      "prior_year_annual": null,
+      "line_items": [
+        {
+          "label": "Management fees",
+          "annual_amount": 25000.0
+        }
+      ]
+    }
+  ],
+  "total_fee_series": [
+    {
+      "year": 2024,
+      "monthly_fee": 599.0
+    }
+  ],
+  "degraded": false,
+  "degraded_reason": null
+}
