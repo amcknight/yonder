@@ -84,14 +84,14 @@ def test_spend_personals_sum_to_the_operating_fee():
     # personal = share * operating_fee, and the shares sum to 1.
     fb = fee_breakdown(_extract_with_schedule(), lot_id="1802")
     total = sum(c.personal_monthly for c in fb.categories)
-    assert total == pytest.approx(521, abs=0.5)
+    assert total == pytest.approx(521, abs=0.02)
 
 
 def test_personal_share_proportional_to_building_annual():
     fb = fee_breakdown(_extract_with_schedule(), lot_id="1802")
     util = next(c for c in fb.categories if c.category == "Utilities")  # 350k
     spend_total = sum(c.building_annual for c in fb.categories)          # 350k + 182k = 532k
-    assert util.personal_monthly == pytest.approx(350000 / spend_total * 521, abs=0.5)
+    assert util.personal_monthly == pytest.approx(350000 / spend_total * 521, abs=0.02)
 
 
 def test_reserve_personal_uses_crf_not_a_share():
