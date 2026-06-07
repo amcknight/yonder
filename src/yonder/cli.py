@@ -13,6 +13,9 @@ from yonder.extract.strata import extract_strata
 from yonder.outlook.assemble import assemble
 from yonder.outlook.extract import extract_reserve, extract_reserve_from_text
 from yonder.outlook.sample import wexford_sample
+from yonder.fees.compute import fee_breakdown
+from yonder.fees.extract import extract_fees, extract_fees_from_text
+from yonder.fees.sample import wexford_fee_sample
 
 _SYMBOL = {
     ResultType.MATCH: "OK ",
@@ -129,6 +132,30 @@ def cmd_outlook_sample(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_fees(args: argparse.Namespace) -> int:
+    src = Path(args.pdf)
+    out = Path(args.out) if args.out else src.parent / f"{src.stem}.fee_breakdown.json"
+    client = _build_client()
+    if src.suffix.lower() == ".txt":
+        extract = extract_fees_from_text(
+            src.read_text(encoding="utf-8", errors="replace"), client=client
+        )
+    else:
+        extract = extract_fees(src.read_bytes(), client=client)
+    breakdown = fee_breakdown(extract, lot_id=args.lot)
+    out.write_text(breakdown.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    print(f"wrote {out}")
+    return 0
+
+
+def cmd_fees_sample(args: argparse.Namespace) -> int:
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(wexford_fee_sample().model_dump_json(indent=2) + "\n", encoding="utf-8")
+    print(f"wrote {out}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="yonder")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -157,6 +184,23 @@ def main(argv: list[str] | None = None) -> int:
     p_outlook.add_argument("pdf", help="path to the report .pdf, or a .txt of its parsed text")
     p_outlook.add_argument("out", nargs="?", default=None)
     p_outlook.set_defaults(func=cmd_outlook)
+
+    p_fees = sub.add_parser(
+        "fees",
+        help="Extract an AGM package (.pdf or already-parsed .txt) into a FeeBreakdown JSON.",
+    )
+    p_fees.add_argument("pdf", help="path to the AGM package .pdf, or a .txt of its parsed text")
+    p_fees.add_argument("--lot", default=None, help="the user's strata-lot id, for personal sizing")
+    p_fees.add_argument("out", nargs="?", default=None)
+    p_fees.set_defaults(func=cmd_fees)
+
+    p_fees_sample = sub.add_parser(
+        "fees-sample", help="Write the synthetic FeeBreakdown sample JSON."
+    )
+    p_fees_sample.add_argument(
+        "out", nargs="?", default="fixtures/samples/fee_breakdown.sample.json"
+    )
+    p_fees_sample.set_defaults(func=cmd_fees_sample)
 
     args = parser.parse_args(argv)
     return args.func(args)
