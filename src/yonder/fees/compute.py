@@ -17,6 +17,7 @@ from yonder.fees.model import (
     FeeBreakdown,
     LineItem,
     RESERVE_CATEGORY,
+    TotalFeePoint,
     UnitMeta,
 )
 from yonder.fees.schema import FeeExtract, LotFee
@@ -87,9 +88,22 @@ def fee_breakdown(extract: FeeExtract, *, lot_id: str | None = None) -> FeeBreak
                 reserve_row = CategoryRow(category=RESERVE_CATEGORY)
             reserve_row.personal_monthly = lot.crf_monthly
 
-    return FeeBreakdown(
+    total_fee_series: list[TotalFeePoint] = []
+    if unit.total_fee_monthly is not None and extract.fiscal_year is not None:
+        total_fee_series = [
+            TotalFeePoint(year=extract.fiscal_year, monthly_fee=unit.total_fee_monthly)
+        ]
+
+    fb = FeeBreakdown(
         building=building,
         unit=unit,
         reserve=reserve_row,
         categories=spend,
+        total_fee_series=total_fee_series,
     )
+    # Hard degrade only: nothing to draw. A single budget year is the v1 norm
+    # (degraded stays False); the trend layer is absent by data, not by flag.
+    if not spend and reserve_row is None:
+        fb.degraded = True
+        fb.degraded_reason = "no operating budget line items found"
+    return fb

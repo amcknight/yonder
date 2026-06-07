@@ -110,3 +110,31 @@ def test_no_lot_id_given_falls_back_to_building_totals():
     fb = fee_breakdown(_extract_with_schedule())  # lot_id omitted
     assert fb.unit.operating_fee_monthly is None
     assert all(c.personal_monthly is None for c in fb.categories)
+
+
+def test_total_fee_series_has_one_current_year_point_when_lot_known():
+    fb = fee_breakdown(_extract_with_schedule(), lot_id="1802")
+    assert len(fb.total_fee_series) == 1
+    assert fb.total_fee_series[0].year == 2024
+    assert fb.total_fee_series[0].monthly_fee == 599
+
+
+def test_no_total_series_without_a_known_lot():
+    fb = fee_breakdown(_budget_extract())
+    assert fb.total_fee_series == []
+
+
+def test_single_year_budget_is_not_hard_degraded():
+    # v1 norm: one budget year renders bars; the trend layer simply has no data.
+    fb = fee_breakdown(_budget_extract())
+    assert fb.degraded is False
+    assert fb.categories  # bars present
+    assert all(c.prior_year_annual is None for c in fb.categories)  # no trend inputs in v1
+
+
+def test_degrades_when_no_operating_budget():
+    fb = fee_breakdown(FeeExtract(building_name="Empty", fiscal_year=2024))
+    assert fb.degraded is True
+    assert "no operating budget" in fb.degraded_reason
+    assert fb.categories == []
+    assert fb.reserve is None
