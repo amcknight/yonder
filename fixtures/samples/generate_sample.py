@@ -36,6 +36,28 @@ PAGES = [
         "",
         "No litigation is currently pending against the strata corporation.",
     ],
+    [
+        "ANNUAL OPERATING BUDGET - FISCAL YEAR 2024",
+        "(SYNTHETIC - NOT A REAL BUILDING)",
+        "",
+        "Water & Sewer .................. $150,000   (Utilities)",
+        "Heat / Natural Gas ............. $120,000   (Utilities)",
+        "Electricity .................... $ 60,000   (Utilities)",
+        "Building Insurance ............. $182,000   (Insurance)",
+        "General Repairs & Maintenance .. $130,000   (Repairs & maintenance)",
+        "Concierge / Security ........... $ 80,000   (Security & life-safety)",
+        "Management Fees ................ $ 25,000   (Administration)",
+        "Transfer to Contingency Reserve  $139,000   (Reserve contribution)",
+    ],
+    [
+        "SCHEDULE OF MONTHLY STRATA FEES BY LOT - 2024",
+        "(SYNTHETIC - NOT A REAL BUILDING)",
+        "",
+        "Lot   Entitlement   Operating/mo   CRF/mo",
+        "0101      70           $445          $66",
+        "0304      82           $521          $78",
+        "1802      82           $521          $78",
+    ],
 ]
 
 
