@@ -2,9 +2,11 @@
 
 Deterministic reporting, not forecasting (unlike the reserve view's assemble):
 roll the operating-budget line items into their parent categories, pin the Reserve
-category on top, sort the spend categories by size, and (Task 4) size each to the
-user's personal monthly share. With no operating budget the breakdown is
-`degraded` (Task 5). No projection, no assumptions, never an invented number.
+category on top, sort the spend categories by size, and size each to the user's
+personal monthly share of the operating fee (Reserve uses the CRF contribution
+directly). With no fee schedule (or the lot not found) the rows carry building
+totals only. With no operating budget the breakdown is `degraded` (Task 5). No
+projection, no assumptions, never an invented number.
 """
 
 from __future__ import annotations
@@ -17,11 +19,17 @@ from yonder.fees.model import (
     RESERVE_CATEGORY,
     UnitMeta,
 )
-from yonder.fees.schema import FeeExtract
+from yonder.fees.schema import FeeExtract, LotFee
 
 
 def _source_note(extract: FeeExtract) -> str:
     return f"AGM budget FY{extract.fiscal_year}" if extract.fiscal_year else "AGM operating budget"
+
+
+def _sum_opt(a: float | None, b: float | None) -> float | None:
+    if a is None and b is None:
+        return None
+    return (a or 0.0) + (b or 0.0)
 
 
 def _rollup(extract: FeeExtract) -> dict[str, CategoryRow]:
@@ -39,6 +47,15 @@ def _rollup(extract: FeeExtract) -> dict[str, CategoryRow]:
     return rows
 
 
+def _find_lot(extract: FeeExtract, lot_id: str | None) -> LotFee | None:
+    if lot_id is None:
+        return None
+    for lot in extract.fee_schedule:
+        if lot.lot_id == lot_id:
+            return lot
+    return None
+
+
 def fee_breakdown(extract: FeeExtract, *, lot_id: str | None = None) -> FeeBreakdown:
     building = BuildingMeta(
         name=extract.building_name,
@@ -49,9 +66,30 @@ def fee_breakdown(extract: FeeExtract, *, lot_id: str | None = None) -> FeeBreak
     reserve_row = rows.pop(RESERVE_CATEGORY, None)
     spend = sorted(rows.values(), key=lambda r: r.building_annual or 0.0, reverse=True)
 
+    unit = UnitMeta()
+    lot = _find_lot(extract, lot_id)
+    if lot is not None:
+        unit = UnitMeta(
+            lot_id=lot.lot_id,
+            entitlement=lot.entitlement,
+            operating_fee_monthly=lot.operating_monthly,
+            reserve_fee_monthly=lot.crf_monthly,
+            total_fee_monthly=_sum_opt(lot.operating_monthly, lot.crf_monthly),
+        )
+        building.unit_label = f"#{lot.lot_id}"
+        total_spend = sum(r.building_annual or 0.0 for r in spend)
+        if lot.operating_monthly is not None and total_spend > 0:
+            for r in spend:
+                share = (r.building_annual or 0.0) / total_spend
+                r.personal_monthly = round(share * lot.operating_monthly, 2)
+        if lot.crf_monthly is not None:
+            if reserve_row is None:
+                reserve_row = CategoryRow(category=RESERVE_CATEGORY)
+            reserve_row.personal_monthly = lot.crf_monthly
+
     return FeeBreakdown(
         building=building,
-        unit=UnitMeta(),
+        unit=unit,
         reserve=reserve_row,
         categories=spend,
     )

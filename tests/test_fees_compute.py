@@ -59,3 +59,54 @@ def test_building_totals_only_when_no_fee_schedule():
     fb = fee_breakdown(_budget_extract())
     assert all(c.personal_monthly is None for c in fb.categories)
     assert fb.unit.operating_fee_monthly is None
+
+
+def _extract_with_schedule() -> FeeExtract:
+    e = _budget_extract()
+    e.fee_schedule = [
+        LotFee(lot_id="1802", entitlement=82, operating_monthly=521, crf_monthly=78),
+        LotFee(lot_id="0101", entitlement=70, operating_monthly=445, crf_monthly=66),
+    ]
+    return e
+
+
+def test_unit_meta_and_total_fee_populated_from_lot():
+    fb = fee_breakdown(_extract_with_schedule(), lot_id="1802")
+    assert fb.unit.lot_id == "1802"
+    assert fb.unit.entitlement == 82
+    assert fb.unit.operating_fee_monthly == 521
+    assert fb.unit.reserve_fee_monthly == 78
+    assert fb.unit.total_fee_monthly == 599
+    assert fb.building.unit_label == "#1802"
+
+
+def test_spend_personals_sum_to_the_operating_fee():
+    # personal = share * operating_fee, and the shares sum to 1.
+    fb = fee_breakdown(_extract_with_schedule(), lot_id="1802")
+    total = sum(c.personal_monthly for c in fb.categories)
+    assert total == pytest.approx(521, abs=0.5)
+
+
+def test_personal_share_proportional_to_building_annual():
+    fb = fee_breakdown(_extract_with_schedule(), lot_id="1802")
+    util = next(c for c in fb.categories if c.category == "Utilities")  # 350k
+    spend_total = sum(c.building_annual for c in fb.categories)          # 350k + 182k = 532k
+    assert util.personal_monthly == pytest.approx(350000 / spend_total * 521, abs=0.5)
+
+
+def test_reserve_personal_uses_crf_not_a_share():
+    fb = fee_breakdown(_extract_with_schedule(), lot_id="1802")
+    assert fb.reserve.personal_monthly == 78  # the lot's CRF contribution, directly
+
+
+def test_unknown_lot_falls_back_to_building_totals():
+    fb = fee_breakdown(_extract_with_schedule(), lot_id="9999")
+    assert fb.unit.operating_fee_monthly is None
+    assert all(c.personal_monthly is None for c in fb.categories)
+    assert fb.reserve.personal_monthly is None
+
+
+def test_no_lot_id_given_falls_back_to_building_totals():
+    fb = fee_breakdown(_extract_with_schedule())  # lot_id omitted
+    assert fb.unit.operating_fee_monthly is None
+    assert all(c.personal_monthly is None for c in fb.categories)
