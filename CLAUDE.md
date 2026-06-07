@@ -31,6 +31,8 @@ Python + uv. Claude via the Anthropic API today, behind `src/yonder/extract/clie
 - `uv sync --extra dev` — set up the environment
 - `uv run yonder extract <pdf>` — extract facts from one PDF (needs `ANTHROPIC_API_KEY`)
 - `uv run yonder eval fixtures/samples` — score labeled PDFs in a folder
+- `uv run yonder fees <agm.pdf> --lot <lot-id>` — break one AGM package into a `FeeBreakdown` (needs `ANTHROPIC_API_KEY`)
+- `uv run yonder fees-sample` — write the synthetic `FeeBreakdown` fixture
 - `uv run pytest` — run tests (live integration test skips without a key)
 - `uv run python fixtures/samples/generate_sample.py` — regenerate the synthetic fixture
 
