@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+from pydantic import BaseModel
 
 from yonder.extract.client import ClaudeClient, ExtractionError
 
@@ -137,10 +138,6 @@ def test_extract_with_tool_no_tool_use_error_includes_stop_reason():
     assert "record_strata_facts" in msg
     assert "end_turn" in msg          # stop_reason disclosed
     assert "text" in msg              # content-block types disclosed
-
-
-from pydantic import BaseModel
-from yonder.extract.client import ClaudeClient
 
 
 class _ToyExtract(BaseModel):

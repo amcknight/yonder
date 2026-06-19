@@ -61,7 +61,7 @@ class ClaudeClient:
                         "data": b64,
                     },
                 },
-                {"type": "text", "text": "Extract the strata facts from this document."},
+                {"type": "text", "text": "Extract the requested facts from this document."},
             ]
         if extra_note:
             content.append({"type": "text", "text": extra_note})
