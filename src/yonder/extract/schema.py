@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import datetime
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -79,7 +80,9 @@ class FoundDocument(BaseModel):
 
 
 class Meeting(BaseModel):
-    type: str | None = Field(default=None, description='"AGM" or "SGM".')
+    type: Literal["AGM", "SGM"] | None = Field(
+        default=None, description='"AGM" or "SGM".'
+    )
     date: datetime.date | None = None
     provenance: Provenance | None = None
 

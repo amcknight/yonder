@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from yonder.extract.schema import (
     DocType,
+    Meeting,
     ReserveTrend,
     SpecialLevy,
     StrataExtract,
@@ -54,3 +55,14 @@ def test_reserve_trend_defaults_unknown():
 def test_unknown_doctype_rejected_so_model_must_use_other():
     with pytest.raises(ValidationError):
         StrataExtract.model_validate({"documents": [{"type": "tax_return"}]})
+
+
+def test_meeting_type_accepts_agm_sgm_or_null():
+    assert Meeting(type="AGM").type == "AGM"
+    assert Meeting(type="SGM").type == "SGM"
+    assert Meeting().type is None
+
+
+def test_meeting_type_rejects_other_values():
+    with pytest.raises(ValidationError):
+        Meeting(type="EGM")
