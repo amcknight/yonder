@@ -8,6 +8,12 @@ from __future__ import annotations
 
 import base64
 import os
+from typing import TypeVar
+
+from pydantic import BaseModel, ValidationError
+
+
+T = TypeVar("T", bound=BaseModel)
 
 
 class ExtractionError(RuntimeError):
@@ -73,3 +79,50 @@ class ClaudeClient:
             if getattr(block, "type", None) == "tool_use" and block.name == tool_name:
                 return block.input
         raise ExtractionError(f"No '{tool_name}' tool_use block in response.")
+
+    def extract_validated(
+        self,
+        *,
+        schema: type[T],
+        tool_name: str,
+        tool_description: str,
+        system: str,
+        repair_hint: str,
+        pdf_bytes: bytes | None = None,
+        text: str | None = None,
+        max_tokens: int = 8000,
+    ) -> T:
+        """Forced tool-use + schema validation + one repair retry. The repair turn
+        feeds the ValidationError back to the model with `repair_hint` appended
+        (subsystem-specific corrective guidance, e.g. "every budget line needs a
+        label"). Raises ValidationError if the second attempt is also invalid."""
+        tool = {
+            "name": tool_name,
+            "description": tool_description,
+            "input_schema": schema.model_json_schema(),
+        }
+        source = {"pdf_bytes": pdf_bytes} if pdf_bytes is not None else {"text": text}
+        extra_note: str | None = None
+        last_error: ValidationError | None = None
+
+        for _ in range(2):
+            raw = self.extract_with_tool(
+                system=system,
+                tool=tool,
+                tool_name=tool_name,
+                extra_note=extra_note,
+                max_tokens=max_tokens,
+                **source,
+            )
+            try:
+                return schema.model_validate(raw)
+            except ValidationError as exc:
+                last_error = exc
+                extra_note = (
+                    "Your previous tool call failed schema validation with these errors:\n"
+                    f"{exc}\n"
+                    f"{repair_hint}"
+                )
+
+        assert last_error is not None
+        raise last_error
