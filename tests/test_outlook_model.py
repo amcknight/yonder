@@ -50,6 +50,14 @@ def test_planned_fee_change_pct_is_fraction():
     assert f.pct == 0.10
 
 
+def test_planned_fee_change_rejects_percent_shaped_input():
+    # Guard the unit-of-measure mistake: a fraction means 0.10, not 10.
+    with pytest.raises(ValidationError):
+        PlannedFeeChange(effective_year=2028, pct=10)
+    with pytest.raises(ValidationError):
+        PlannedFeeChange(effective_year=2028, pct=-2)
+
+
 def test_full_outlook_round_trips_through_json():
     o = ReserveOutlook(
         unit=Unit(entitlement_numerator=18, entitlement_denominator=2719, strata_fee_monthly=486),

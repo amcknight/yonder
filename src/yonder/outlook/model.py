@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class BuildingMeta(BaseModel):
@@ -50,6 +50,17 @@ class PlannedFeeChange(BaseModel):
     effective_year: int
     pct: float                                # fraction, e.g. 0.10 for +10%
     note: str | None = None
+
+    @field_validator("pct")
+    @classmethod
+    def _pct_must_be_fraction(cls, v: float) -> float:
+        # The mock's feeFactor does 1 + pct, so a percent-as-integer (10 instead
+        # of 0.10) would silently 11x contributions. Reject at the schema layer.
+        if not -1 < v < 1:
+            raise ValueError(
+                f"pct {v} looks like a percent, expected a fraction (-1 < pct < 1)"
+            )
+        return v
 
 
 class TimelineEvent(BaseModel):
