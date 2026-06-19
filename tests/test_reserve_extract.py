@@ -1,68 +1,54 @@
-import pytest
-from pydantic import ValidationError
-
 from yonder.outlook.extract import (
+    REPAIR_HINT,
+    SYSTEM_PROMPT,
     TOOL_NAME,
     extract_reserve,
     extract_reserve_from_text,
-    reserve_tool,
 )
+from yonder.outlook.schema import ReserveExtract
 
 
-class FakeClient:
-    """Returns canned tool-input dicts in order; records each call's kwargs."""
-    def __init__(self, responses):
-        self.responses = list(responses)
-        self.calls = []
+class _FakeClient:
+    def __init__(self, response: ReserveExtract):
+        self._response = response
+        self.calls: list[dict] = []
 
-    def extract_with_tool(self, **kwargs):
+    def extract_validated(self, **kwargs):
         self.calls.append(kwargs)
-        return self.responses.pop(0)
+        return self._response
 
 
-def test_reserve_tool_shape():
-    t = reserve_tool()
-    assert t["name"] == TOOL_NAME == "record_reserve_facts"
-    assert "input_schema" in t and t["input_schema"]["type"] == "object"
-
-
-def test_extract_reserve_returns_validated():
-    fc = FakeClient([{
+def _canned() -> ReserveExtract:
+    return ReserveExtract.model_validate({
         "building_name": "X",
         "current_crf_balance": 350000,
         "projected_expenditures": [{"label": "Roof", "amount": 180000, "year": 2028}],
-    }])
-    res = extract_reserve(b"%PDF fake", client=fc)
-    assert res.building_name == "X"
-    assert res.projected_expenditures[0].label == "Roof"
-    assert len(fc.calls) == 1
+    })
 
 
-def test_extract_reserve_repairs_once_then_succeeds():
-    bad = {"projected_expenditures": [{"amount": 180000}]}      # missing required label
-    good = {"building_name": "Y", "projected_expenditures": []}
-    fc = FakeClient([bad, good])
-    res = extract_reserve(b"%PDF fake", client=fc)
-    assert res.building_name == "Y"
-    assert len(fc.calls) == 2
-    assert fc.calls[0]["extra_note"] is None   # first attempt carries no repair note
-    assert fc.calls[1]["extra_note"]  # the repair note was sent on the retry
+def test_extract_reserve_wires_schema_and_constants_with_pdf():
+    canned = _canned()
+    client = _FakeClient(canned)
+
+    result = extract_reserve(b"%PDF fake", client=client)
+
+    assert result is canned
+    assert len(client.calls) == 1
+    call = client.calls[0]
+    assert call["schema"] is ReserveExtract
+    assert call["tool_name"] == TOOL_NAME == "record_reserve_facts"
+    assert call["system"] == SYSTEM_PROMPT
+    assert call["repair_hint"] == REPAIR_HINT
+    assert call["pdf_bytes"] == b"%PDF fake"
+    assert "text" not in call
 
 
-def test_extract_reserve_raises_if_both_attempts_invalid():
-    bad = {"projected_expenditures": [{"amount": 180000}]}      # missing required label
-    fc = FakeClient([bad, bad])
-    with pytest.raises(ValidationError):
-        extract_reserve(b"%PDF fake", client=fc)
+def test_extract_reserve_from_text_sends_text_not_pdf():
+    canned = _canned()
+    client = _FakeClient(canned)
 
+    result = extract_reserve_from_text("parsed report text", client=client)
 
-def test_extract_reserve_from_text_passes_text_not_pdf():
-    fc = FakeClient([{
-        "building_name": "Z",
-        "current_crf_balance": 900000,
-        "projected_expenditures": [{"label": "Roof", "amount": 180000, "year": 2028}],
-    }])
-    res = extract_reserve_from_text("some parsed report text", client=fc)
-    assert res.building_name == "Z"
-    assert fc.calls[0]["text"] == "some parsed report text"
-    assert "pdf_bytes" not in fc.calls[0]
+    assert result is canned
+    assert client.calls[0]["text"] == "parsed report text"
+    assert "pdf_bytes" not in client.calls[0]

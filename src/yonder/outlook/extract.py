@@ -1,14 +1,10 @@
 """The ONE intelligence call: a depreciation-report PDF -> ReserveExtract.
 
-Mirrors extract/strata.py: build a forced tool from the Pydantic schema, send
-the whole PDF through the client.py Claude seam, and validate ->
-repair-retry-once -> fail loudly. This call can later be re-aimed at other document types by swapping the
-system prompt; only the prompt is depreciation-report-specific.
+Forwards to ClaudeClient.extract_validated (the shared retry+repair seam).
+Only the system prompt and repair hint are depreciation-report-specific.
 """
 
 from __future__ import annotations
-
-from pydantic import ValidationError
 
 from yonder.outlook.schema import ReserveExtract
 
@@ -36,52 +32,35 @@ projected cost and the year it falls due. Use `year` for a single year, or \
 
 Call the record_reserve_facts tool with everything you found."""
 
+REPAIR_HINT = (
+    "Return the record_reserve_facts tool call again, corrected. Use null "
+    "for anything the report does not state; every expenditure needs a label."
+)
 
-def reserve_tool() -> dict:
-    return {
-        "name": TOOL_NAME,
-        "description": "Record the reserve-fund facts extracted from the depreciation report.",
-        "input_schema": ReserveExtract.model_json_schema(),
-    }
-
-
-def _run(client, **source) -> ReserveExtract:
-    """Shared validate -> repair-retry-once -> fail loop. `source` is exactly one
-    of pdf_bytes=... or text=..., forwarded to client.extract_with_tool."""
-    tool = reserve_tool()
-    extra_note: str | None = None
-    last_error: ValidationError | None = None
-
-    for _ in range(2):
-        raw = client.extract_with_tool(
-            system=SYSTEM_PROMPT,
-            tool=tool,
-            tool_name=TOOL_NAME,
-            extra_note=extra_note,
-            **source,
-        )
-        try:
-            return ReserveExtract.model_validate(raw)
-        except ValidationError as exc:
-            last_error = exc
-            extra_note = (
-                "Your previous tool call failed schema validation with these errors:\n"
-                f"{exc}\n"
-                "Return the record_reserve_facts tool call again, corrected. Use null "
-                "for anything the report does not state; every expenditure needs a label."
-            )
-
-    assert last_error is not None
-    raise last_error
+_TOOL_DESCRIPTION = "Record the reserve-fund facts extracted from the depreciation report."
 
 
 def extract_reserve(pdf_bytes: bytes, *, client) -> ReserveExtract:
     """Extract a ReserveExtract from a depreciation-report PDF (text + page
     images)."""
-    return _run(client, pdf_bytes=pdf_bytes)
+    return client.extract_validated(
+        schema=ReserveExtract,
+        tool_name=TOOL_NAME,
+        tool_description=_TOOL_DESCRIPTION,
+        system=SYSTEM_PROMPT,
+        repair_hint=REPAIR_HINT,
+        pdf_bytes=pdf_bytes,
+    )
 
 
 def extract_reserve_from_text(text: str, *, client) -> ReserveExtract:
     """Extract a ReserveExtract from a report's already-parsed text (cheaper: no
     page images). Same prompt and repair loop as the PDF path."""
-    return _run(client, text=text)
+    return client.extract_validated(
+        schema=ReserveExtract,
+        tool_name=TOOL_NAME,
+        tool_description=_TOOL_DESCRIPTION,
+        system=SYSTEM_PROMPT,
+        repair_hint=REPAIR_HINT,
+        text=text,
+    )
