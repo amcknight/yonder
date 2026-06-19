@@ -1,69 +1,57 @@
-import pytest
-from pydantic import ValidationError
-
 from yonder.fees.extract import (
+    REPAIR_HINT,
+    SYSTEM_PROMPT,
     TOOL_NAME,
     extract_fees,
     extract_fees_from_text,
-    fees_tool,
 )
+from yonder.fees.schema import FeeExtract
 
 
-class FakeClient:
-    """Returns canned tool-input dicts in order; records each call's kwargs."""
+class _FakeClient:
+    def __init__(self, response: FeeExtract):
+        self._response = response
+        self.calls: list[dict] = []
 
-    def __init__(self, responses):
-        self.responses = list(responses)
-        self.calls = []
-
-    def extract_with_tool(self, **kwargs):
+    def extract_validated(self, **kwargs):
         self.calls.append(kwargs)
-        return self.responses.pop(0)
+        return self._response
 
 
-def test_fees_tool_shape():
-    t = fees_tool()
-    assert t["name"] == TOOL_NAME == "record_fee_facts"
-    assert "input_schema" in t and t["input_schema"]["type"] == "object"
-
-
-def test_extract_fees_returns_validated():
-    fc = FakeClient([{
+def _canned() -> FeeExtract:
+    return FeeExtract.model_validate({
         "building_name": "X",
         "fiscal_year": 2024,
         "operating_budget": [
             {"label": "Insurance", "parent_category": "Insurance", "annual_amount": 182000},
         ],
         "fee_schedule": [{"lot_id": "1802", "operating_monthly": 521, "crf_monthly": 78}],
-    }])
-    res = extract_fees(b"%PDF fake", client=fc)
-    assert res.building_name == "X"
-    assert res.operating_budget[0].parent_category == "Insurance"
-    assert res.fee_schedule[0].lot_id == "1802"
-    assert len(fc.calls) == 1
+    })
 
 
-def test_extract_fees_repairs_once_then_succeeds():
-    bad = {"operating_budget": [{"annual_amount": 1}]}  # missing label + parent_category
-    good = {"building_name": "Y", "operating_budget": []}
-    fc = FakeClient([bad, good])
-    res = extract_fees(b"%PDF fake", client=fc)
-    assert res.building_name == "Y"
-    assert len(fc.calls) == 2
-    assert fc.calls[0]["extra_note"] is None
-    assert fc.calls[1]["extra_note"]
+def test_extract_fees_wires_schema_and_constants_with_pdf():
+    canned = _canned()
+    client = _FakeClient(canned)
+
+    result = extract_fees(b"%PDF fake", client=client)
+
+    assert result is canned
+    assert len(client.calls) == 1
+    call = client.calls[0]
+    assert call["schema"] is FeeExtract
+    assert call["tool_name"] == TOOL_NAME == "record_fee_facts"
+    assert call["system"] == SYSTEM_PROMPT
+    assert call["repair_hint"] == REPAIR_HINT
+    assert call["pdf_bytes"] == b"%PDF fake"
+    assert "text" not in call
 
 
-def test_extract_fees_raises_if_both_attempts_invalid():
-    bad = {"operating_budget": [{"annual_amount": 1}]}
-    fc = FakeClient([bad, bad])
-    with pytest.raises(ValidationError):
-        extract_fees(b"%PDF fake", client=fc)
+def test_extract_fees_from_text_sends_text_not_pdf():
+    canned = _canned()
+    client = _FakeClient(canned)
 
+    result = extract_fees_from_text("parsed budget text", client=client)
 
-def test_extract_fees_from_text_passes_text_not_pdf():
-    fc = FakeClient([{"building_name": "Z", "operating_budget": []}])
-    res = extract_fees_from_text("some parsed budget text", client=fc)
-    assert res.building_name == "Z"
-    assert fc.calls[0]["text"] == "some parsed budget text"
-    assert "pdf_bytes" not in fc.calls[0]
+    assert result is canned
+    assert client.calls[0]["text"] == "parsed budget text"
+    assert "pdf_bytes" not in client.calls[0]

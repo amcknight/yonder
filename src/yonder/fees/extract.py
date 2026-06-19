@@ -1,13 +1,10 @@
 """The ONE intelligence call: an AGM-package PDF -> FeeExtract.
 
-Mirrors outlook/extract.py: build a forced tool from the Pydantic schema, send the
-PDF (or already-parsed text) through the client.py Claude seam, and validate ->
-repair-retry-once -> fail loudly. Only the system prompt is fee-specific.
+Forwards to ClaudeClient.extract_validated (the shared retry+repair seam).
+Only the system prompt and repair hint are fee-specific.
 """
 
 from __future__ import annotations
-
-from pydantic import ValidationError
 
 from yonder.fees.schema import FeeExtract
 
@@ -35,51 +32,34 @@ contributions.
 
 Call the record_fee_facts tool with everything you found."""
 
+REPAIR_HINT = (
+    "Return the record_fee_facts tool call again, corrected. Use null for "
+    "anything the documents do not state; every budget line needs a label and "
+    "a parent_category, and every lot needs a lot_id."
+)
 
-def fees_tool() -> dict:
-    return {
-        "name": TOOL_NAME,
-        "description": "Record the operating budget and per-lot fee schedule from the AGM package.",
-        "input_schema": FeeExtract.model_json_schema(),
-    }
-
-
-def _run(client, **source) -> FeeExtract:
-    """Shared validate -> repair-retry-once -> fail loop. `source` is exactly one
-    of pdf_bytes=... or text=..., forwarded to client.extract_with_tool."""
-    tool = fees_tool()
-    extra_note: str | None = None
-    last_error: ValidationError | None = None
-
-    for _ in range(2):
-        raw = client.extract_with_tool(
-            system=SYSTEM_PROMPT,
-            tool=tool,
-            tool_name=TOOL_NAME,
-            extra_note=extra_note,
-            **source,
-        )
-        try:
-            return FeeExtract.model_validate(raw)
-        except ValidationError as exc:
-            last_error = exc
-            extra_note = (
-                "Your previous tool call failed schema validation with these errors:\n"
-                f"{exc}\n"
-                "Return the record_fee_facts tool call again, corrected. Use null for "
-                "anything the documents do not state; every budget line needs a label and "
-                "a parent_category, and every lot needs a lot_id."
-            )
-
-    assert last_error is not None
-    raise last_error
+_TOOL_DESCRIPTION = "Record the operating budget and per-lot fee schedule from the AGM package."
 
 
 def extract_fees(pdf_bytes: bytes, *, client) -> FeeExtract:
     """Extract a FeeExtract from an AGM-package PDF (text + page images)."""
-    return _run(client, pdf_bytes=pdf_bytes)
+    return client.extract_validated(
+        schema=FeeExtract,
+        tool_name=TOOL_NAME,
+        tool_description=_TOOL_DESCRIPTION,
+        system=SYSTEM_PROMPT,
+        repair_hint=REPAIR_HINT,
+        pdf_bytes=pdf_bytes,
+    )
 
 
 def extract_fees_from_text(text: str, *, client) -> FeeExtract:
     """Extract a FeeExtract from already-parsed text (cheaper: no page images)."""
-    return _run(client, text=text)
+    return client.extract_validated(
+        schema=FeeExtract,
+        tool_name=TOOL_NAME,
+        tool_description=_TOOL_DESCRIPTION,
+        system=SYSTEM_PROMPT,
+        repair_hint=REPAIR_HINT,
+        text=text,
+    )
