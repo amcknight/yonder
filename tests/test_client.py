@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from yonder.extract.client import ClaudeClient
+from yonder.extract.client import ClaudeClient, ExtractionError
 
 
 def _fake_tool_response(tool_input):
@@ -93,6 +93,50 @@ def test_extract_with_tool_requires_exactly_one_source():
     with pytest.raises(ValueError):
         client.extract_with_tool(system="s", tool=tool, tool_name="t",
                                  pdf_bytes=b"x", text="y")  # both
+
+
+def test_extract_with_tool_wraps_sdk_errors_with_context():
+    sdk = MagicMock()
+    sdk.messages.create.side_effect = RuntimeError("upstream rate-limited")
+    client = ClaudeClient(sdk=sdk, model="claude-opus-4-8")
+
+    with pytest.raises(ExtractionError) as excinfo:
+        client.extract_with_tool(
+            pdf_bytes=b"%PDF-1.4 fake",
+            system="You read BC strata documents and extract structured facts.",
+            tool={"name": "record_strata_facts", "input_schema": {"type": "object"}},
+            tool_name="record_strata_facts",
+        )
+
+    msg = str(excinfo.value)
+    assert "pdf" in msg                      # input mode disclosed
+    assert "You read BC strata" in msg       # system-prompt prefix disclosed
+    assert "upstream rate-limited" in msg    # underlying error preserved
+    assert excinfo.value.__cause__ is not None  # SDK exception chained
+
+
+def test_extract_with_tool_no_tool_use_error_includes_stop_reason():
+    sdk = MagicMock()
+    text_block = MagicMock()
+    text_block.type = "text"
+    message = MagicMock()
+    message.content = [text_block]
+    message.stop_reason = "end_turn"
+    sdk.messages.create.return_value = message
+    client = ClaudeClient(sdk=sdk, model="claude-opus-4-8")
+
+    with pytest.raises(ExtractionError) as excinfo:
+        client.extract_with_tool(
+            pdf_bytes=b"%PDF-1.4 fake",
+            system="sys",
+            tool={"name": "record_strata_facts", "input_schema": {"type": "object"}},
+            tool_name="record_strata_facts",
+        )
+
+    msg = str(excinfo.value)
+    assert "record_strata_facts" in msg
+    assert "end_turn" in msg          # stop_reason disclosed
+    assert "text" in msg              # content-block types disclosed
 
 
 from pydantic import BaseModel

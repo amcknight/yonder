@@ -67,18 +67,31 @@ class ClaudeClient:
             content.append({"type": "text", "text": extra_note})
         messages = [{"role": "user", "content": content}]
 
-        message = self._sdk.messages.create(
-            model=self.model,
-            max_tokens=max_tokens,
-            system=system,
-            tools=[tool],
-            tool_choice={"type": "tool", "name": tool_name},
-            messages=messages,
-        )
+        input_mode = "pdf" if pdf_bytes is not None else "text"
+        try:
+            message = self._sdk.messages.create(
+                model=self.model,
+                max_tokens=max_tokens,
+                system=system,
+                tools=[tool],
+                tool_choice={"type": "tool", "name": tool_name},
+                messages=messages,
+            )
+        except Exception as exc:
+            raise ExtractionError(
+                f"Anthropic API call failed [{input_mode}] (system: {system[:80]!r}): {exc}"
+            ) from exc
+
         for block in message.content:
             if getattr(block, "type", None) == "tool_use" and block.name == tool_name:
                 return block.input
-        raise ExtractionError(f"No '{tool_name}' tool_use block in response.")
+
+        block_types = [getattr(b, "type", "?") for b in message.content]
+        raise ExtractionError(
+            f"No '{tool_name}' tool_use block in response "
+            f"(stop_reason={getattr(message, 'stop_reason', None)!r}, "
+            f"content_blocks={block_types})."
+        )
 
     def extract_validated(
         self,
