@@ -1,8 +1,6 @@
-"""Prompt + extraction orchestration: validate -> repair-retry-once -> fail loudly."""
+"""Strata-extraction wiring: schema + prompts + the one client call."""
 
 from __future__ import annotations
-
-from pydantic import ValidationError
 
 from yonder.extract.schema import StrataExtract
 
@@ -24,41 +22,23 @@ in type_label.
 
 Call the record_strata_facts tool with everything you found."""
 
+REPAIR_HINT = (
+    "Return the record_strata_facts tool call again, corrected. Use null for "
+    "anything you are unsure of, and only the allowed enum values."
+)
 
-def strata_tool() -> dict:
-    return {
-        "name": TOOL_NAME,
-        "description": "Record the structured strata facts extracted from the document.",
-        "input_schema": StrataExtract.model_json_schema(),
-    }
+_TOOL_DESCRIPTION = "Record the structured strata facts extracted from the document."
 
 
 def extract_strata(pdf_bytes: bytes, *, client) -> StrataExtract:
     """Extract a StrataExtract from PDF bytes. Retries once with the validation
     error fed back to the model; raises ValidationError if the second try is
     also invalid."""
-    tool = strata_tool()
-    extra_note: str | None = None
-    last_error: ValidationError | None = None
-
-    for attempt in range(2):
-        raw = client.extract_with_tool(
-            pdf_bytes=pdf_bytes,
-            system=SYSTEM_PROMPT,
-            tool=tool,
-            tool_name=TOOL_NAME,
-            extra_note=extra_note,
-        )
-        try:
-            return StrataExtract.model_validate(raw)
-        except ValidationError as exc:
-            last_error = exc
-            extra_note = (
-                "Your previous tool call failed schema validation with these errors:\n"
-                f"{exc}\n"
-                "Return the record_strata_facts tool call again, corrected. Use null for "
-                "anything you are unsure of, and only the allowed enum values."
-            )
-
-    assert last_error is not None
-    raise last_error
+    return client.extract_validated(
+        schema=StrataExtract,
+        tool_name=TOOL_NAME,
+        tool_description=_TOOL_DESCRIPTION,
+        system=SYSTEM_PROMPT,
+        repair_hint=REPAIR_HINT,
+        pdf_bytes=pdf_bytes,
+    )
