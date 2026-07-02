@@ -1,0 +1,105 @@
+{
+  "building": {
+    "name": "The Wexford",
+    "source_note": "Bylaws consol. 2021 · Rules 2023 · synthetic"
+  },
+  "verdict": "Pet-friendly with size limits · no short-term rentals · no rental cap",
+  "rules": [
+    {
+      "key": "pets",
+      "icon": "pets",
+      "label": "Pets",
+      "stance": "limited",
+      "summary": "Up to 2 pets per unit. Dogs must be ≤15 kg. Council approval required.",
+      "source_ref": "Bylaw 4"
+    },
+    {
+      "key": "long-term-rentals",
+      "icon": "longRental",
+      "label": "Long-term rentals",
+      "stance": "open",
+      "summary": "No cap on rentals. 6-month minimum lease term.",
+      "source_ref": "Bylaw 41"
+    },
+    {
+      "key": "short-term-rentals",
+      "icon": "shortRental",
+      "label": "Short-term rentals (Airbnb)",
+      "stance": "no",
+      "summary": "Rentals under 30 days prohibited. $500 weekly fine for breach.",
+      "source_ref": "Bylaw 42"
+    },
+    {
+      "key": "age",
+      "icon": "age",
+      "label": "Age restrictions",
+      "stance": "none",
+      "summary": "All ages welcome.",
+      "source_ref": null
+    },
+    {
+      "key": "smoking",
+      "icon": "smoking",
+      "label": "Smoking (tobacco)",
+      "stance": "limited",
+      "summary": "Allowed in units. Prohibited on balconies and in common areas.",
+      "source_ref": "Rule 7.2"
+    },
+    {
+      "key": "cannabis",
+      "icon": "cannabis",
+      "label": "Cannabis",
+      "stance": "no",
+      "summary": "Smoking and growing prohibited throughout the building, including units.",
+      "source_ref": "Rule 7.3"
+    },
+    {
+      "key": "bbq",
+      "icon": "bbq",
+      "label": "Balcony BBQs",
+      "stance": "limited",
+      "summary": "Electric BBQs only. Propane and charcoal prohibited.",
+      "source_ref": "Rule 9.1"
+    },
+    {
+      "key": "ev",
+      "icon": "ev",
+      "label": "EV charging",
+      "stance": "limited",
+      "summary": "Owner-installed Level 2 chargers permitted with council approval; owner covers wiring and metering.",
+      "source_ref": "Rule 12"
+    },
+    {
+      "key": "moves",
+      "icon": "moves",
+      "label": "Move-ins & deliveries",
+      "stance": "limited",
+      "summary": "$200 fee per move. Weekdays 9am–4pm only. Elevator booking required.",
+      "source_ref": "Rule 5"
+    },
+    {
+      "key": "noise",
+      "icon": "noise",
+      "label": "Quiet hours",
+      "stance": "limited",
+      "summary": "10pm–8am weekdays, 11pm–9am weekends.",
+      "source_ref": "Bylaw 3.1"
+    },
+    {
+      "key": "parking",
+      "icon": "parking",
+      "label": "Parking",
+      "stance": "limited",
+      "summary": "1 stall assigned per unit. May rent to other owners only — not non-residents.",
+      "source_ref": "Bylaw 6"
+    },
+    {
+      "key": "amenities",
+      "icon": "amenities",
+      "label": "Pool & gym",
+      "stance": "open",
+      "summary": "Pool 6am–10pm. Gym 24/7. Guests must be accompanied by a resident.",
+      "source_ref": "Rule 10"
+    }
+  ]
+}

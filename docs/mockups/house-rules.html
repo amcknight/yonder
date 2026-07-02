@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>House Rules v1 — at-a-glance bylaws & rules</title>
+<style>
+  body{margin:0;background:#e2e8f0;color:#0f172a;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:24px 12px;display:flex;flex-direction:column;align-items:center}
+  .cap{color:#475569;font-size:.85rem;margin:0 0 14px;max-width:430px;text-align:center;line-height:1.4}
+  .phone{width:390px;max-width:100%;background:#0f172a;border-radius:34px;padding:14px 14px 22px;box-shadow:0 14px 44px rgba(0,0,0,.4);color:#e2e8f0;border:6px solid #1e293b}
+  .notch{height:16px;display:flex;justify-content:center;align-items:center;margin-bottom:4px}
+  .notch div{width:90px;height:5px;border-radius:3px;background:#334155}
+  .head{display:flex;justify-content:space-between;align-items:baseline;margin:2px 6px 10px}
+  .bname{font-weight:600;font-size:1rem}
+  .stale{font-size:.66rem;color:#94a3b8;text-align:right;max-width:160px;line-height:1.3}
+  .verdict{margin:4px 6px 12px;font-size:.82rem;font-weight:600;line-height:1.4;color:#cbd5e1}
+  .rules{padding:0 2px}
+  .rule{display:flex;align-items:flex-start;gap:11px;padding:11px 8px;border-top:1px solid #1e293b}
+  .rule:first-child{border-top:0}
+  .icon{flex:0 0 36px;width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:#1e293b}
+  .icon svg{display:block}
+  .body{flex:1;min-width:0}
+  .row1{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .label{font-size:.86rem;font-weight:600;color:#e8eaed}
+  .pill{flex:0 0 auto;font-size:.6rem;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:999px;text-transform:uppercase}
+  .pill-open{background:#0e2a1c;color:#5eead4;border:1px solid #1f4e3d}
+  .pill-limited{background:#2a1f0e;color:#fbbf24;border:1px solid #5b431a}
+  .pill-no{background:#2a0e10;color:#fda4af;border:1px solid #5b1a23}
+  .summary{margin:3px 0 0;font-size:.74rem;color:#cbd5e1;line-height:1.4}
+  .src{margin:4px 0 0;font-size:.6rem;color:#64748b;letter-spacing:.02em}
+</style>
+</head>
+<body>
+<p class="cap">v1 House Rules: pulled from the strata's <b>bylaws &amp; rules</b> PDFs. Each row shows the <b>stance</b> (Open / Limited / No), a one-line summary, and the source bylaw or rule. Sorted by what buyers ask first.</p>
+<div class="phone">
+  <div class="notch"><div></div></div>
+  <div class="head">
+    <div class="bname">&mdash;</div>
+    <div class="stale"></div>
+  </div>
+  <div class="verdict" id="verdict"></div>
+  <div class="rules" id="rules"></div>
+</div>
+<p class="cap" style="margin-top:14px">Tap-to-cite (jump to bylaw excerpt) deferred to v1.1.</p>
+
+<script>
+(function(){
+  var ICONS = {
+    pets: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="9" r="1.8"/><circle cx="10" cy="5" r="1.8"/><circle cx="14" cy="5" r="1.8"/><circle cx="18" cy="9" r="1.8"/><path d="M7 17a5 5 0 0 1 10 0 3 3 0 0 1-3 3h-4a3 3 0 0 1-3-3z"/></svg>',
+    longRental: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>',
+    shortRental: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    age: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>',
+    smoking: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="14" width="14" height="3" rx="1"/><path d="M19 14v3M22 14v3"/><path d="M7 10c0-2 2-2 2-4M12 10c0-2 2-2 2-4"/></svg>',
+    cannabis: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21v-8"/><path d="M12 13c-4 0-7-3-7-7 4 0 7 3 7 7z"/><path d="M12 13c4 0 7-3 7-7-4 0-7 3-7 7z"/></svg>',
+    bbq: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1.5 6a3 3 0 0 1-3 2h-7a3 3 0 0 1-3-2z"/><path d="M8 21v-3M16 21v-3"/><path d="M9 5c0-1 1-1 1-2M12 5c0-1 1-1 1-2M15 5c0-1 1-1 1-2"/></svg>',
+    ev: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3 5 14h6l-2 7 8-11h-6z"/></svg>',
+    moves: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="12" height="9" rx="1"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="6" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/></svg>',
+    noise: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4h4l5 4V6L7 10z"/><path d="M16 8a5 5 0 0 1 0 8"/><path d="M19 5a9 9 0 0 1 0 14"/></svg>',
+    parking: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M10 17V8h3.5a2.5 2.5 0 0 1 0 5H10"/></svg>',
+    amenities: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9v6M6 7v10M18 7v10M21 9v6M6 12h12"/></svg>'
+  };
+
+  var STANCE_COLOR = {open:'#5eead4', limited:'#fbbf24', no:'#fda4af', none:'#94a3b8'};
+  var PILL_LABEL   = {open:'Open', limited:'Limited', no:'No'};
+
+  function el(tag, cls, txt){
+    var e=document.createElement(tag);
+    if(cls) e.className=cls;
+    if(txt!=null) e.textContent=txt;
+    return e;
+  }
+
+  function render(hr){
+    var b = hr.building||{};
+    document.querySelector('.bname').textContent = b.name||'—';
+    document.querySelector('.stale').textContent = b.source_note||'';
+    document.getElementById('verdict').textContent = hr.verdict||'';
+
+    var list = document.getElementById('rules');
+    list.innerHTML = '';
+    (hr.rules||[]).forEach(function(r){
+      var row = el('div', 'rule');
+
+      var iconBox = el('div', 'icon');
+      iconBox.style.color = STANCE_COLOR[r.stance] || '#cbd5e1';
+      iconBox.innerHTML = ICONS[r.icon] || '';
+      row.appendChild(iconBox);
+
+      var body = el('div', 'body');
+      var row1 = el('div', 'row1');
+      row1.appendChild(el('span', 'label', r.label));
+      if(PILL_LABEL[r.stance]){
+        row1.appendChild(el('span', 'pill pill-'+r.stance, PILL_LABEL[r.stance]));
+      }
+      body.appendChild(row1);
+      body.appendChild(el('p', 'summary', r.summary));
+      if(r.source_ref) body.appendChild(el('p', 'src', r.source_ref));
+      row.appendChild(body);
+
+      list.appendChild(row);
+    });
+  }
+
+  function fail(msg){
+    document.getElementById('rules').innerHTML = '<p style="color:#f59e0b;font-size:.75rem;padding:8px">'+msg+'</p>';
+  }
+
+  var params = new URLSearchParams(location.search);
+  var url = params.get('data') || '../../fixtures/samples/house_rules.sample.json';
+  fetch(url)
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(render)
+    .catch(function(e){
+      fail('Could not load '+url+'. Serve the repo root (python -m http.server) and open http://localhost:8000/docs/mockups/house-rules.html  ['+e.message+']');
+    });
+})();
+</script>
+</body>
+</html>
